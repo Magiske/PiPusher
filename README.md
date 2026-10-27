@@ -63,9 +63,9 @@ Requirements: PHP **8.1+** with `pdo_sqlite` (and `zip` for ZIP bundles).
 
 ### simply.com
 
-Simply runs an Apache-compatible setup with `.htaccess` support, so the included protection files work as they are.
+Runs an Apache-compatible setup with `.htaccess` support, so the included protection files work as they are.
 
-1. In the Simply control panel, select **PHP 8.1 or newer** for the site.
+1. Select **PHP 8.1 or newer** for the site.
 2. Upload the `pipusher` folder by FTP or the file manager, e.g. into `public_html/pipusher`.
 3. Open `https://yourdomain.dk/pipusher/`. If something is missing (PHP version, SQLite, write access), PiPusher shows exactly what.
 4. After setup, open **Settings → Server diagnostics**. It shows the web server, PHP version, upload limit, whether `data/` is writable, and a link to check that the database is *not* downloadable (you must get 403/404).
