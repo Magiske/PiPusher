@@ -1,0 +1,28 @@
+# PiPusher server
+Options -Indexes
+DirectoryIndex index.php
+
+# Never serve internals directly.
+<FilesMatch "^(config\.php|config\.sample\.php|\.user\.ini)$">
+    Require all denied
+</FilesMatch>
+RedirectMatch 404 ^/(.*/)?(inc|data)/
+
+# Make sure the device auth header reaches PHP behind some CGI/FastCGI setups.
+<IfModule mod_setenvif.c>
+    SetEnvIf X-Device-Auth "(.+)" HTTP_X_DEVICE_AUTH=$1
+</IfModule>
+
+# Upload limits for hosts running PHP as an Apache module (e.g. simply.com). PHP-FPM hosts use .user.ini instead.
+<IfModule mod_php.c>
+    php_value upload_max_filesize 512M
+    php_value post_max_size 520M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 512M
+    php_value post_max_size 520M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>

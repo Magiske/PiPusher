@@ -1,0 +1,27 @@
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+#pp-root { position: fixed; inset: 0; cursor: none; overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+.pp-stage { position: absolute; top: 50%; left: 50%; overflow: hidden; }
+.pp-layout { opacity: 0; transition: opacity .8s ease; }
+.pp-layout.pp-in { opacity: 1; }
+.pp-layout.pp-in.pp-out { opacity: 0; }
+.pp-zone { position: absolute; overflow: hidden; }
+.pp-item { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; margin: 0; display: block;
+  background: transparent; opacity: 0; }
+.pp-item.pp-in { opacity: 1; }
+.pp-fade { transition: opacity .7s ease; }
+.pp-fade.pp-out { opacity: 0; }
+.pp-slide { opacity: 1; transform: translateX(100%); transition: transform .7s ease; }
+.pp-slide.pp-in { transform: none; }
+.pp-slide.pp-in.pp-out { transform: translateX(-100%); }
+.pp-none.pp-out { opacity: 0; }
+
+.pp-message { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; color: #e8edf5; padding: 5vh 5vw; box-sizing: border-box;
+  background: radial-gradient(ellipse at top, #1d3557 0%, #0b1320 70%); }
+.pp-logo { font-size: 3vh; letter-spacing: .4em; text-transform: uppercase; color: #7fb3ff; margin-bottom: 4vh; font-weight: 700; }
+.pp-message h1 { font-size: 6vh; margin: 0 0 2vh; font-weight: 600; }
+.pp-message p { font-size: 2.6vh; margin: 0; opacity: .8; max-width: 70vw; }
+.pp-code { font: 700 14vh/1 ui-monospace, "DejaVu Sans Mono", Menlo, monospace; letter-spacing: .15em;
+  margin-top: 4vh; color: #fff; text-shadow: 0 0 4vh rgba(127, 179, 255, .5); }
+.pp-details { position: absolute; bottom: 4vh; left: 0; right: 0; font-size: 2vh; opacity: .55; }

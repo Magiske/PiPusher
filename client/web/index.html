@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PiPusher</title>
+<link rel="stylesheet" href="player.css">
+</head>
+<body>
+<div id="pp-root"></div>
+<script src="player.js"></script>
+<script>
+PiPusher.start({ mode: 'device', stateUrl: '/api/state', mediaBase: '/media/', pollMs: 5000 });
+</script>
+</body>
+</html>
