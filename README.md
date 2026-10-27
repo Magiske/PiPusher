@@ -83,6 +83,7 @@ Notes:
 Each user can turn on two-factor authentication (2FA) under their account (👤). They scan a QR code with an authenticator app, such as Google Authenticator, Microsoft Authenticator or 1Password, and confirm it with a code. After that, logging in asks for a 6-digit code from the app after the password. The codes are standard TOTP (RFC 6238), and each code works only once.
 
 - **Recovery codes**: turning on 2FA shows 10 single-use recovery codes, once. Each one works in place of an app code, for example after losing a phone. New codes can be created on the account page; the old ones then stop working.
+- **Site name**: authenticator apps list each account as *site name* + *username*, for example "Acme Signage: admin". Set the site name under *Settings → Security*; the default is "PiPusher (your host name)". A change applies to new setups. Users who already scanned a code can turn 2FA off and on again to get the new name.
 - **Require it**: *Settings → Security* can require 2FA for administrators or for all users. Users it applies to must set it up before they can open anything else, and they cannot turn it off.
 - **Lost phone and recovery codes**: an administrator clicks **Reset 2FA** for the user under *Users*. If the only administrator is locked out, clear it in the database: `sqlite3 data/pipusher.sqlite "UPDATE users SET totp_secret = NULL WHERE username = 'admin'"`.
 - A login waits at most 5 minutes and allows 5 tries for the code. After that, the password has to be entered again.

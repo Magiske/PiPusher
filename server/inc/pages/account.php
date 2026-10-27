@@ -119,7 +119,8 @@ page_header('Your account', 'account');
       <ol class="steps">
         <li>Scan this QR code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, …).
           <div class="qr" data-qr="<?= h(totp_uri($setupSecret, $me['username'])) ?>"></div>
-          <span class="muted small">Can't scan? Enter this key in the app: <code><?= h(trim(chunk_split($setupSecret, 4, ' '))) ?></code></span></li>
+          <span class="muted small">The app lists it as <strong><?= h(totp_site_name()) ?>: <?= h($me['username']) ?></strong>.<br>
+            Can't scan? Enter this key in the app: <code><?= h(trim(chunk_split($setupSecret, 4, ' '))) ?></code></span></li>
         <li>Enter the 6-digit code the app shows:
           <form method="post" class="row wrap align-end">
             <?= csrf_field() ?><input type="hidden" name="do" value="mfa_confirm">

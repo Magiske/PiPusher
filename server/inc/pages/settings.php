@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($do === 'security') {
         $req = $_POST['require_mfa'] ?? '';
         set_setting('require_mfa', in_array($req, ['admins', 'all'], true) ? $req : '');
+        set_setting('site_name', mb_substr(trim(str_replace(':', '', (string)($_POST['site_name'] ?? ''))), 0, 60));
         flash('Settings saved.' . ($req !== '' ? ' Users without two-factor authentication must set it up before they can continue.' : ''));
     } elseif ($do === 'web_key') {
         set_setting('web_key', ($_POST['enable'] ?? '') === '1' ? random_token(12) : '');
@@ -73,6 +74,10 @@ sudo bash install.sh --server <?= h(server_base_url()) ?><?= $key ? ' --key ' . 
             setting('require_mfa', '')) ?></select>
         <span class="muted small">Users it applies to must set up an authenticator app under their account before they can use
           PiPusher, and cannot turn it off. Set it up for yourself first.</span></label>
+      <label>Site name in authenticator apps
+        <input name="site_name" maxlength="60" value="<?= h(setting('site_name', '')) ?>" placeholder="<?= h(setting('site_name', '') !== '' ? '' : totp_site_name()) ?>">
+        <span class="muted small">Apps list each account as <em>site name</em> + <em>username</em>, e.g. "<?= h(totp_site_name()) ?>: <?= h(current_user()['username']) ?>".
+          Applies to new setups; users who already scanned a code can create a new one by turning 2FA off and on.</span></label>
       <button class="btn btn-primary">Save</button>
     </form>
     <?php $without = array_column(array_filter(q('SELECT * FROM users ORDER BY username COLLATE NOCASE'), fn($u) => !mfa_enabled($u)), 'username'); ?>

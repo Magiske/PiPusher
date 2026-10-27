@@ -74,10 +74,19 @@ function totp_verify(string $secret, string $code, int $lastStep = 0): ?int
     return null;
 }
 
-/** otpauth:// link for authenticator apps (shown as a QR code). */
+/** Name authenticator apps show above the username (Settings → Security; default "PiPusher (host)"). */
+function totp_site_name(): string
+{
+    // A colon separates site and username in the otpauth label, so it cannot be part of the name.
+    $name = trim(str_replace(':', '', (string)setting('site_name', '')));
+    $host = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? 'localhost');
+    return $name !== '' ? $name : 'PiPusher (' . str_replace(':', '', $host) . ')';
+}
+
+/** otpauth:// link for authenticator apps (shown as a QR code): the app lists it as "<site name>: <username>". */
 function totp_uri(string $secret, string $username): string
 {
-    $issuer = 'PiPusher (' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . ')';
+    $issuer = totp_site_name();
     return 'otpauth://totp/' . rawurlencode($issuer . ':' . $username)
         . '?secret=' . $secret . '&issuer=' . rawurlencode($issuer) . '&algorithm=SHA1&digits=6&period=' . PP_TOTP_PERIOD;
 }
