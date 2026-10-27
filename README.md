@@ -61,7 +61,7 @@ Requirements: PHP **8.1+** with `pdo_sqlite` (and `zip` for ZIP bundles).
 2. Make `pipusher/data/` writable by PHP.
 3. Open the URL and create the admin account. Optionally add the sample content.
 
-### simply.com
+### webserver
 
 Runs an Apache-compatible setup with `.htaccess` support, so the included protection files work as they are.
 
