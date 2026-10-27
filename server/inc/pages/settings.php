@@ -56,12 +56,55 @@ page_header('Settings', 'settings');
     <?= post_button(['do' => 'regen_key'], 'Generate new key', 'btn btn-sm') ?>
   </div>
 
+  <?php
+  $dl = client_downloads();
+  $base = server_base_url();
+  $dlButton = fn(string $f) => empty($dl[$f]['path'])
+      ? '<span class="muted small">' . h($dl[$f]['label']) . ': not included with this server</span>'
+      : '<a class="btn btn-sm" href="download.php?file=' . $f . '">⬇ ' . h($dl[$f]['label']) . ' <span class="muted small">' . h(human_size((int)$dl[$f]['size'])) . '</span></a>';
+  ?>
   <div class="card">
-    <h2>Install a screen</h2>
-    <p>Copy the client package to the Raspberry Pi, unpack it and run:</p>
-    <pre>tar xzf pipusher-client-*.tar.gz
-cd pipusher-client-*/
-sudo bash install.sh --server <?= h(server_base_url()) ?><?= $key ? ' --key ' . h($key) : '' ?></pre>
+    <h2>Install a Raspberry Pi screen</h2>
+    <p>Raspberry Pi OS Bookworm or newer, desktop edition (Pi 3, 4, 5, Zero 2 W).
+      <?= $key ? 'On the Pi, open a terminal and run:' : 'Download the client package, copy it to the Pi (e.g. <code>scp</code>) and run on the Pi:' ?></p>
+    <pre><?php if ($key): ?>curl -fLo pipusher-client.tar.gz "<?= h(client_download_url('pi')) ?>"
+tar xzf pipusher-client.tar.gz<?php else: ?>tar xzf pipusher-client-<?= h(PP_VERSION) ?>.tar.gz<?php endif; ?>
+
+cd pipusher-client-<?= h(PP_VERSION) ?>/
+sudo bash install.sh --server <?= h($base) ?><?= $key ? ' --key ' . h($key) : '' ?>
+
+sudo reboot</pre>
+    <div class="row"><?= $dlButton('pi') ?></div>
+    <p class="muted small">The installer sets up the agent as a service, installs Chromium if needed, starts the player full screen at
+      login and turns off screen blanking. <?= $key ? 'With the registration key the screen is approved automatically.'
+        : 'Without a registration key the screen shows a code that you approve under Screens.' ?>
+      To update, run the same commands with the new version; the configuration and cache are kept.</p>
+  </div>
+
+  <div class="card">
+    <h2>Install a Windows screen</h2>
+    <p>A Windows PC with Google Chrome (or Edge) works like a Pi: cached content, offline playback, screenshots and remote commands.
+      No administrator rights needed.</p>
+    <h3>Windows 10/11</h3>
+    <?php if ($key): ?>
+      <p>Open PowerShell (not as administrator) and run:</p>
+      <pre>[Net.ServicePointManager]::SecurityProtocol = 'Tls12'
+Invoke-WebRequest "<?= h(client_download_url('windows')) ?>" -OutFile "$env:TEMP\pipusher.zip" -UseBasicParsing
+Expand-Archive "$env:TEMP\pipusher.zip" "$env:TEMP\pipusher" -Force
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\pipusher\pipusher-client-windows-<?= h(PP_VERSION) ?>\install.ps1" -Server <?= h($base) ?> -Key <?= h($key) ?></pre>
+    <?php else: ?>
+      <p>Download and unpack the client, then in its folder open PowerShell and run:</p>
+      <pre>powershell -ExecutionPolicy Bypass -File install.ps1 -Server <?= h($base) ?></pre>
+    <?php endif; ?>
+    <h3>Windows 7, 8 and 8.1</h3>
+    <p>Download and unpack the Windows 7/8 package (32- and 64-bit), then in its folder open PowerShell and run:</p>
+    <pre>powershell -ExecutionPolicy Bypass -File install.ps1 -Server <?= h($base) ?><?= $key ? ' -Key ' . h($key) : '' ?></pre>
+    <div class="row wrap"><?= $dlButton('windows') ?><?= $dlButton('windows7') ?></div>
+    <p class="muted small">The installer copies the client to <code>%LOCALAPPDATA%\PiPusher</code>, starts the player full screen now and
+      at every login, and adds <em>PiPusher</em> and <em>Stop PiPusher</em> to the Start menu. Options: <code>-Name "Screen name"</code>,
+      <code>-NoAutostart</code>, <code>-NoReboot</code> (the Reboot command does not restart the PC). For a dedicated screen PC, turn on
+      automatic sign-in so it comes back after a power cut. To update, run the installer of the new version; the configuration and
+      cache are kept. Remove with <code>uninstall.ps1</code> in <code>%LOCALAPPDATA%\PiPusher</code>.</p>
     <p class="muted small">Server version <?= h(PP_VERSION) ?> · PHP <?= h(PHP_VERSION) ?> · SQLite <?= h(db()->query('SELECT sqlite_version()')->fetchColumn()) ?></p>
   </div>
 

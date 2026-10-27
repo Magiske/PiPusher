@@ -48,7 +48,7 @@ The `VERSION` file is the single source of the version number. The build stamps 
 - `pipusher-client-<ver>.tar.gz` contains `pipusher-linux-arm64` (64-bit Pi OS), `pipusher-linux-armv7` (32-bit Pi OS) and `pipusher-linux-amd64`, plus the install scripts.
 - `pipusher-client-windows-<ver>.zip` is the Windows 10/11 screen client (see *Windows screen*).
 - `pipusher-client-windows7-8-<ver>.zip` is the same client for Windows 7/8/8.1, 32- and 64-bit. Go 1.21+ only builds for Windows 10/11, so it is built with Go 1.20 (`tools\go1.20`, `client\go.legacy.mod`). The client code must therefore stay Go 1.20 compatible (see `client\compat.go`).
-- `pipusher-server-<ver>.zip` is the PHP application.
+- `pipusher-server-<ver>.zip` is the PHP application. It also contains the three client packages in `downloads/`, so screens can download the client straight from your server (see *Settings*).
 - `pipusher-windows-amd64-<ver>.exe` is the client for local testing.
 
 **Updating:** upload the new server files over the old ones; `data/` and `config.php` are not in the zip, so your content stays. On each Pi, unpack the new client package and run `sudo bash install.sh` again; it keeps the configuration and cache.
@@ -73,8 +73,9 @@ Runs an Apache-compatible setup with `.htaccess` support, so the included protec
 If the upload limit shown is low, the `php_value` lines in `.htaccess` were not applied. FAQ explains how to change PHP settings for your plan.
 
 Notes:
-- **Apache**: the included `.htaccess` files block `inc/` and `data/`.
-- **nginx**: deny `/pipusher/(inc|data)/`, or better, move the data directory outside the web root with `config.php` (copy `config.sample.php`). `media.php/...` needs PATH_INFO (`fastcgi_split_path_info`).
+- **Apache**: the included `.htaccess` files block `inc/`, `data/` and `downloads/`.
+- **Client downloads**: `download.php?file=pi|windows|windows7` serves the bundled client packages to logged-in administrators, or to anyone with the registration key, which is how a screen downloads them. Without a registration key, only administrators can download them.
+- **nginx**: deny `/pipusher/(inc|data|downloads)/`, or better, move the data directory outside the web root with `config.php` (copy `config.sample.php`). `media.php/...` needs PATH_INFO (`fastcgi_split_path_info`).
 - Upload limits are in `.user.ini` (512 MB). Raise them for bigger videos.
 - Use **HTTPS** in production, because devices send their credentials on every sync.
 
@@ -92,6 +93,17 @@ Each user can turn on two-factor authentication (2FA) under their account (👤)
 ## Raspberry Pi installation
 
 Raspberry Pi OS Bookworm or newer, **desktop** edition. Pi 3, 4, 5 and Zero 2 W are supported (armv6 Pi 1/Zero are not).
+
+**Settings → Install a Raspberry Pi screen** shows these commands with your server address and key already filled in. With a registration key set, the Pi downloads the client straight from the server:
+
+```bash
+curl -fLo pipusher-client.tar.gz "https://example.com/pipusher/download.php?file=pi&key=<registration key>"
+tar xzf pipusher-client.tar.gz && cd pipusher-client-<ver>
+sudo bash install.sh --server https://example.com/pipusher/ --key <registration key>
+sudo reboot
+```
+
+Or copy the package over yourself:
 
 ```bash
 scp dist/pipusher-client-<ver>.tar.gz pi@raspberrypi.local:
@@ -124,6 +136,8 @@ A Windows 10/11 PC with Google Chrome (or Edge) can act as a full screen, just l
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1 -Server https://example.com/pipusher/ -Key <registration key>
 ```
+
+**Settings → Install a Windows screen** has download buttons for both Windows packages. With a registration key set, it also shows a PowerShell command that downloads the Windows 10/11 client from the server, unpacks it and installs it in one go.
 
 The installer:
 - installs into `%LOCALAPPDATA%\PiPusher`
@@ -178,6 +192,7 @@ server/            PHP application (upload this)
   inc/totp.php       two-factor authentication (TOTP + recovery codes)
   assets/qrcode.js   QR code generator for 2FA setup (qrcode-generator 1.4.4, MIT, Kazuhiko Arase)
   play.php           online web player (web screens, no login)
+  download.php       client packages from downloads/ (admin session or registration key)
   assets/player/     player.js/css: shared with the client (source of truth)
 client/            Go agent (stdlib only)
   web/               embedded player page (player.js/css copied by build.ps1)

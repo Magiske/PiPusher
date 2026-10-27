@@ -6,7 +6,7 @@ DirectoryIndex index.php
 <FilesMatch "^(config\.php|config\.sample\.php|\.user\.ini)$">
     Require all denied
 </FilesMatch>
-RedirectMatch 404 ^/(.*/)?(inc|data)/
+RedirectMatch 404 ^/(.*/)?(inc|data|downloads)/
 
 # Make sure the device auth header reaches PHP behind some CGI/FastCGI setups.
 <IfModule mod_setenvif.c>

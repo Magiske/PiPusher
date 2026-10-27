@@ -80,6 +80,37 @@ function server_base_url(): string
     return ($https ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir . '/';
 }
 
+/**
+ * Client packages bundled with the server (downloads/, filled by build.ps1), keyed by download.php?file=<key>.
+ * In a development checkout without downloads/, the packages in ../dist are used. Missing packages have no 'path'.
+ */
+function client_downloads(): array
+{
+    $list = [
+        'pi' => ['label' => 'Raspberry Pi / Linux', 'pattern' => 'pipusher-client-%s.tar.gz'],
+        'windows' => ['label' => 'Windows 10/11', 'pattern' => 'pipusher-client-windows-%s.zip'],
+        'windows7' => ['label' => 'Windows 7/8/8.1', 'pattern' => 'pipusher-client-windows7-8-%s.zip'],
+    ];
+    $dirs = [PP_ROOT . '/downloads', dirname(PP_ROOT) . '/dist'];
+    foreach ($list as $key => $d) {
+        foreach ($dirs as $dir) {
+            $path = $dir . '/' . sprintf($d['pattern'], PP_VERSION);
+            if (is_file($path)) {
+                $list[$key] += ['path' => $path, 'name' => basename($path), 'size' => filesize($path)];
+                break;
+            }
+        }
+    }
+    return $list;
+}
+
+/** Download link for a client package; includes the registration key so devices can fetch it without logging in. */
+function client_download_url(string $file, bool $withKey = true): string
+{
+    $key = (string)setting('registration_key', '');
+    return server_base_url() . 'download.php?file=' . $file . ($withKey && $key !== '' ? '&key=' . rawurlencode($key) : '');
+}
+
 function poll_interval(): int
 {
     return max(10, (int)setting('poll_interval', '60'));

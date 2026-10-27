@@ -13,7 +13,7 @@
     dist\pipusher-client-<ver>.tar.gz          copy to the Pi, unpack, run install.sh (also contains windows\)
     dist\pipusher-client-windows-<ver>.zip     the Windows 10/11 client: unpack, run install.ps1
     dist\pipusher-client-windows7-8-<ver>.zip  the same for Windows 7/8/8.1 (built with Go 1.20)
-    dist\pipusher-server-<ver>.zip             upload to your PHP web host
+    dist\pipusher-server-<ver>.zip             upload to your PHP web host (includes the client packages in downloads\)
     dist\pipusher-windows-amd64-<ver>.exe      the client for local testing on Windows
 #>
 param([ValidateSet('', 'patch', 'minor', 'major')][string]$Bump = '')
@@ -153,6 +153,11 @@ $stage = Join-Path $work 'server\pipusher'
 Copy-Item "$root\server" $stage -Recurse
 Get-ChildItem "$stage\data" -Force | Where-Object { $_.Name -ne '.htaccess' } | Remove-Item -Recurse -Force
 Remove-Item "$stage\config.php" -ErrorAction SilentlyContinue
+# The client packages ride along, so screens can download them from the server (download.php, Settings).
+$downloads = Join-Path $stage 'downloads'
+New-Item -ItemType Directory -Force $downloads | Out-Null
+Copy-Item "$dist\pipusher-client-$Version.tar.gz", "$dist\$winName.zip", "$dist\$legacyName.zip" $downloads
+[IO.File]::WriteAllText("$downloads\.htaccess", "Require all denied`nDeny from all`n", $utf8)
 # tar (not Compress-Archive, which writes backslash paths on Windows PowerShell 5.1) for a Linux-friendly zip.
 & $tar -a -cf "$dist\pipusher-server-$Version.zip" -C (Split-Path $stage) pipusher
 if ($LASTEXITCODE) { throw 'zip failed' }
