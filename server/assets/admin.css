@@ -35,6 +35,8 @@ main.narrow { max-width: 440px; padding-top: 10vh; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1rem; }
 .card.empty { text-align: center; padding: 2.5rem; }
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 0 1rem; }
+/* Grid cells may shrink below their content's width, so long text wraps inside the card instead of overflowing it. */
+.grid-2 > * { min-width: 0; }
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 1rem; }
 .stack { display: flex; flex-direction: column; gap: .8rem; }
 .row { display: flex; gap: .5rem; align-items: center; }
@@ -129,7 +131,8 @@ form.inline { display: inline; }
 .screenshot { background: #0f1b2d; border-radius: 8px; overflow: hidden; display: grid; place-items: center; min-height: 160px; }
 .screenshot img { display: block; max-width: 100%; max-height: 60vh; }
 .screenshot-empty { padding: 3rem; }
-.diag td:first-child { color: var(--muted); white-space: nowrap; }
+.diag td:first-child { color: var(--muted); width: 38%; }
+.diag td { overflow-wrap: anywhere; vertical-align: top; }
 .row-pending { background: rgba(229,165,10,.08); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 .dot-on { background: var(--ok); box-shadow: 0 0 0 3px rgba(31,157,85,.2); }
