@@ -70,7 +70,7 @@ Runs an Apache-compatible setup with `.htaccess` support, so the included protec
 3. Open `https://yourdomain.dk/pipusher/`. If something is missing (PHP version, SQLite, write access), PiPusher shows exactly what.
 4. After setup, open **Settings → Server diagnostics**. It shows the web server, PHP version, upload limit, whether `data/` is writable, and a link to check that the database is *not* downloadable (you must get 403/404).
 
-If the upload limit shown is low, the `php_value` lines in `.htaccess` were not applied. Simply's FAQ explains how to change PHP settings for your plan.
+If the upload limit shown is low, the `php_value` lines in `.htaccess` were not applied. FAQ explains how to change PHP settings for your plan.
 
 Notes:
 - **Apache**: the included `.htaccess` files block `inc/` and `data/`.
