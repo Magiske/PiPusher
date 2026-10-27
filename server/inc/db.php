@@ -184,6 +184,12 @@ function migrate(PDO $pdo): void
             'ALTER TABLE devices ADD COLUMN web_token TEXT',
             'CREATE UNIQUE INDEX idx_devices_web_token ON devices(web_token)',
         ],
+        8 => [
+            // Two-factor authentication: TOTP secret (NULL = off), last used time step, hashed recovery codes (JSON).
+            'ALTER TABLE users ADD COLUMN totp_secret TEXT',
+            'ALTER TABLE users ADD COLUMN totp_last INTEGER NOT NULL DEFAULT 0',
+            'ALTER TABLE users ADD COLUMN recovery_codes TEXT',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

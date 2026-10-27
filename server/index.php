@@ -41,6 +41,10 @@ if (!q1('SELECT id FROM users LIMIT 1')) {
     if ($p === '') {
         $p = is_admin() ? 'devices' : 'playlists';
     }
+    // Settings can require two-factor authentication: until it is set up, only the account page is open.
+    if (mfa_required(current_user()) && !mfa_enabled(current_user()) && !in_array($p, ['account', 'logout'], true)) {
+        redirect(url(['p' => 'account']) . '#mfa');
+    }
     if (!is_admin() && !in_array($p, $editorPages, true)) {
         deny('This page is for administrators. Your account can edit playlists.');
     }

@@ -196,3 +196,8 @@ dl.kv dd { margin: 0; word-break: break-word; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .table { display: block; overflow-x: auto; }
 }
+.qr { width: 200px; margin: .6rem 0; background: #fff; border-radius: 8px; line-height: 0; }
+.qr svg { width: 100%; height: auto; }
+.steps { padding-left: 1.2rem; }
+.steps li { margin-bottom: .8rem; }
+.recovery-codes { font-size: 1.05rem; letter-spacing: .05em; }

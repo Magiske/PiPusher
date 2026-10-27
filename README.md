@@ -26,7 +26,7 @@ Self-hosted digital signage inspired by PiSignage and Yodeck.
 | **Layout** | The screen's design: **orientation** (landscape, portrait, or either one flipped), background colour, and one or more **zones** (windows), each positioned in % of the screen. |
 | **Zone playlist** | Each zone rotates through its own list of content, each item with a duration. A duration of 0 on a video plays it to the end. |
 | **Media** | HTML pages (written in the built-in editor or uploaded), **ZIP bundles** (HTML + CSS/JS/images), images, videos, and links (external URLs). Organised in nestable **folders**; select items to move them between folders, and search across all folders. Deleting a folder moves its contents up a level and deletes nothing. |
-| **Users** | **Administrators** have full control, including managing users. **Playlist editors** only see Playlists: they can add, remove, reorder and re-time layouts in playlists and preview them, either in all playlists or only in selected ones. They cannot create or delete playlists or touch screens, layouts, media or settings. Everyone can change their own password under their account (👤). |
+| **Users** | **Administrators** have full control, including managing users. **Playlist editors** only see Playlists: they can add, remove, reorder and re-time layouts in playlists and preview them, either in all playlists or only in selected ones. They cannot create or delete playlists or touch screens, layouts, media or settings. Everyone can change their own password and turn on **two-factor authentication** under their account (👤). See *Two-factor authentication*. |
 
 Portrait is handled by rotating the player, so you don't need to change the Pi's display settings. Dynamic pages are ordinary HTML/JS. The *Weather* sample shows how to fetch live data and fall back to the last values while offline. External URLs are skipped while the screen is offline.
 
@@ -77,6 +77,16 @@ Notes:
 - **nginx**: deny `/pipusher/(inc|data)/`, or better, move the data directory outside the web root with `config.php` (copy `config.sample.php`). `media.php/...` needs PATH_INFO (`fastcgi_split_path_info`).
 - Upload limits are in `.user.ini` (512 MB). Raise them for bigger videos.
 - Use **HTTPS** in production, because devices send their credentials on every sync.
+
+### Two-factor authentication
+
+Each user can turn on two-factor authentication (2FA) under their account (👤). They scan a QR code with an authenticator app, such as Google Authenticator, Microsoft Authenticator or 1Password, and confirm it with a code. After that, logging in asks for a 6-digit code from the app after the password. The codes are standard TOTP (RFC 6238), and each code works only once.
+
+- **Recovery codes**: turning on 2FA shows 10 single-use recovery codes, once. Each one works in place of an app code, for example after losing a phone. New codes can be created on the account page; the old ones then stop working.
+- **Require it**: *Settings → Security* can require 2FA for administrators or for all users. Users it applies to must set it up before they can open anything else, and they cannot turn it off.
+- **Lost phone and recovery codes**: an administrator clicks **Reset 2FA** for the user under *Users*. If the only administrator is locked out, clear it in the database: `sqlite3 data/pipusher.sqlite "UPDATE users SET totp_secret = NULL WHERE username = 'admin'"`.
+- A login waits at most 5 minutes and allows 5 tries for the code. After that, the password has to be entered again.
+- The server's clock must be correct, because codes depend on the time.
 
 ## Raspberry Pi installation
 
@@ -164,6 +174,8 @@ server/            PHP application (upload this)
   api.php            device API
   preview.php        layout preview using the real player
   media.php          media for previews (admin session)
+  inc/totp.php       two-factor authentication (TOTP + recovery codes)
+  assets/qrcode.js   QR code generator for 2FA setup (qrcode-generator 1.4.4, MIT, Kazuhiko Arase)
   play.php           online web player (web screens, no login)
   assets/player/     player.js/css: shared with the client (source of truth)
 client/            Go agent (stdlib only)

@@ -14,6 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($do === 'regen_key') {
         set_setting('registration_key', random_code(10));
         flash('New registration key generated. Existing screens are not affected.');
+    } elseif ($do === 'security') {
+        $req = $_POST['require_mfa'] ?? '';
+        set_setting('require_mfa', in_array($req, ['admins', 'all'], true) ? $req : '');
+        flash('Settings saved.' . ($req !== '' ? ' Users without two-factor authentication must set it up before they can continue.' : ''));
     } elseif ($do === 'web_key') {
         set_setting('web_key', ($_POST['enable'] ?? '') === '1' ? random_token(12) : '');
         flash(($_POST['enable'] ?? '') === '1'
@@ -58,6 +62,22 @@ page_header('Settings', 'settings');
 cd pipusher-client-*/
 sudo bash install.sh --server <?= h(server_base_url()) ?><?= $key ? ' --key ' . h($key) : '' ?></pre>
     <p class="muted small">Server version <?= h(PP_VERSION) ?> · PHP <?= h(PHP_VERSION) ?> · SQLite <?= h(db()->query('SELECT sqlite_version()')->fetchColumn()) ?></p>
+  </div>
+
+  <div class="card">
+    <h2>🔐 Security</h2>
+    <form method="post" class="stack">
+      <?= csrf_field() ?><input type="hidden" name="do" value="security">
+      <label>Require two-factor authentication for
+        <select name="require_mfa"><?= select_options(['' => 'Nobody (each user decides)', 'admins' => 'Administrators', 'all' => 'All users'],
+            setting('require_mfa', '')) ?></select>
+        <span class="muted small">Users it applies to must set up an authenticator app under their account before they can use
+          PiPusher, and cannot turn it off. Set it up for yourself first.</span></label>
+      <button class="btn btn-primary">Save</button>
+    </form>
+    <?php $without = array_column(array_filter(q('SELECT * FROM users ORDER BY username COLLATE NOCASE'), fn($u) => !mfa_enabled($u)), 'username'); ?>
+    <p class="muted small"><?= $without ? 'Without two-factor: ' . h(implode(', ', $without)) . '.' : 'Every user has two-factor authentication on.' ?>
+      Manage users under <a href="<?= url(['p' => 'users']) ?>">Users</a>.</p>
   </div>
 
   <div class="card">

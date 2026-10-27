@@ -60,6 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect(url(['p' => 'users', 'edit' => $user['id']]));
     }
+    if ($do === 'mfa_reset') {
+        disable_mfa((int)$user['id']);
+        flash('Two-factor authentication turned off for "' . $user['username'] . '"' . (mfa_required($user)
+            ? '. They must set it up again at their next login.' : '. They can set it up again under their account.'));
+        redirect(url(['p' => 'users']));
+    }
     if ($do === 'delete') {
         if ((int)$user['id'] === (int)$me['id']) {
             flash('You cannot delete your own account.', 'error');
@@ -108,7 +114,7 @@ page_header('Users', 'users');
 <div class="grid-2">
   <div class="card">
     <table class="table">
-      <thead><tr><th>User</th><th>Role</th><th>Playlists</th><th>Last login</th><th></th></tr></thead>
+      <thead><tr><th>User</th><th>Role</th><th>Playlists</th><th>2FA</th><th>Last login</th><th></th></tr></thead>
       <tbody>
       <?php foreach ($users as $u):
           $scope = 'all';
@@ -121,9 +127,15 @@ page_header('Users', 'users');
           <td><strong><?= h($u['username']) ?></strong><?= (int)$u['id'] === (int)$me['id'] ? ' <span class="muted small">(you)</span>' : '' ?></td>
           <td><span class="badge <?= $u['role'] === 'admin' ? 'badge-admin' : 'badge-editor' ?>"><?= $u['role'] === 'admin' ? 'ADMIN' : 'PLAYLIST EDITOR' ?></span></td>
           <td class="small"><?= $u['role'] === 'admin' ? '<span class="muted">full control</span>' : h($scope) ?></td>
+          <td><?= mfa_enabled($u) ? '<span class="badge badge-follow" title="Two-factor authentication on">ON</span>'
+              : '<span class="badge badge-own">OFF</span>' . (mfa_required($u) ? ' <span class="muted small">required</span>' : '') ?></td>
           <td class="small"><?= h(time_ago($u['last_login'] ? (int)$u['last_login'] : null)) ?></td>
           <td class="right">
             <a class="btn btn-sm" href="<?= url(['p' => 'users', 'edit' => $u['id']]) ?>">Edit</a>
+            <?php if (mfa_enabled($u) && (int)$u['id'] !== (int)$me['id']): ?>
+              <?= post_button(['do' => 'mfa_reset', 'id' => $u['id']], 'Reset 2FA', 'btn btn-sm',
+                  'Turn off two-factor authentication for ' . $u['username'] . '? Use this when they lost their phone and recovery codes.') ?>
+            <?php endif; ?>
             <?php if ((int)$u['id'] !== (int)$me['id']): ?>
               <?= post_button(['do' => 'delete', 'id' => $u['id']], 'Delete', 'btn btn-sm btn-danger', 'Delete user ' . $u['username'] . '?') ?>
             <?php endif; ?>
@@ -136,6 +148,9 @@ page_header('Users', 'users');
       <strong>Playlist editors</strong> only see Playlists: they can add, remove, reorder and change the timing/rules of layouts
       in the playlists they are allowed to edit, and preview them. They cannot create or delete playlists, or change screens,
       layouts, media or settings.</p>
+    <p class="muted small"><strong>Two-factor authentication (2FA)</strong>: each user turns it on under their account (👤) with an
+      authenticator app. <strong>Reset 2FA</strong> turns it off for a user who lost their phone and recovery codes. To require it,
+      see <a href="<?= url(['p' => 'settings']) ?>">Settings</a>.</p>
   </div>
 
   <div class="card">

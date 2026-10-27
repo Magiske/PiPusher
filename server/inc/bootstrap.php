@@ -21,3 +21,4 @@ define('PP_SCREENS', PP_DATA . '/screenshots');
 require __DIR__ . '/db.php';
 require __DIR__ . '/functions.php';
 require __DIR__ . '/payload.php';
+require __DIR__ . '/totp.php';

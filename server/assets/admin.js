@@ -8,6 +8,15 @@
     });
   });
 
+  // QR codes (two-factor setup), drawn by assets/qrcode.js when the page loads it.
+  document.querySelectorAll('[data-qr]').forEach(function (box) {
+    if (!window.qrcode) return;
+    var qr = window.qrcode(0, 'M');
+    qr.addData(box.getAttribute('data-qr'));
+    qr.make();
+    box.innerHTML = qr.createSvgTag({ cellSize: 5, margin: 4, scalable: true });
+  });
+
   // Inputs that save their form when changed (playlist durations).
   document.querySelectorAll('[data-autosubmit]').forEach(function (inp) {
     inp.addEventListener('change', function () { inp.form.submit(); });
