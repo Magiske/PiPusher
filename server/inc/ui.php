@@ -23,7 +23,10 @@ function page_header(string $title, string $active = ''): void
       <a href="<?= url(['p' => $k]) ?>" class="<?= $active === $k ? 'active' : '' ?>"><?= h($label) ?></a>
     <?php endforeach; ?>
   </nav>
-  <a class="account <?= $active === 'account' ? 'active' : '' ?>" href="<?= url(['p' => 'account']) ?>" title="Your account">👤 <?= h(current_user()['username']) ?></a>
+  <span class="topbar-user">
+    <span class="version" title="PiPusher server version">v<?= h(PP_VERSION) ?></span>
+    <a class="account <?= $active === 'account' ? 'active' : '' ?>" href="<?= url(['p' => 'account']) ?>" title="Your account">👤 <?= h(current_user()['username']) ?></a>
+  </span>
   <a class="logout" href="<?= url(['p' => 'logout']) ?>">Log out</a>
 </header>
 <?php endif; ?>

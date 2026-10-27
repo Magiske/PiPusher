@@ -97,6 +97,8 @@ form.inline { display: inline; }
 .access-list { display: flex; flex-direction: column; gap: .2rem; padding-left: 1.6rem; max-height: 220px; overflow-y: auto; }
 .badge-admin { background: #e8efff; color: #2f5bd3; }
 .badge-editor { background: #f1e9fb; color: #7a3fc4; }
+.topbar-user { display: flex; align-items: center; gap: .9rem; white-space: nowrap; }
+.topbar .version { font-size: .8rem; opacity: .55; font-variant-numeric: tabular-nums; }
 .topbar .account { opacity: .85; white-space: nowrap; }
 .topbar .account.active, .topbar .account:hover { opacity: 1; }
 .crumbs { flex-wrap: wrap; gap: .4rem; }
