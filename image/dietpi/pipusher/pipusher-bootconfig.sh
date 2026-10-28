@@ -46,4 +46,12 @@ if [ -n "$W" ] && [ -n "$H" ] && [ "$W" != "$RES" ]; then
   grep -q "^SOFTWARE_CHROMIUM_RES_X=$W\$" /boot/dietpi.txt || sed -i "s/^SOFTWARE_CHROMIUM_RES_X=.*/SOFTWARE_CHROMIUM_RES_X=$W/" /boot/dietpi.txt
   grep -q "^SOFTWARE_CHROMIUM_RES_Y=$H\$" /boot/dietpi.txt || sed -i "s/^SOFTWARE_CHROMIUM_RES_Y=.*/SOFTWARE_CHROMIUM_RES_Y=$H/" /boot/dietpi.txt
 fi
+
+# Raspberry Pi's /usr/bin/chromium asks "not recommended ... less than 1GB of RAM" on 512 MB boards.
+# Without a window manager the dialog gets no keyboard, so skip it. The launcher only reads
+# --no-memcheck from its command line (not /etc/chromium.d), and DietPi may rewrite its kiosk script.
+AUTOSTART=/var/lib/dietpi/dietpi-software/installed/chromium-autostart.sh
+if [ -f "$AUTOSTART" ] && ! grep -q -- '--no-memcheck' "$AUTOSTART"; then
+  sed -i 's/^CHROMIUM_OPTS="--kiosk/CHROMIUM_OPTS="--no-memcheck --kiosk/' "$AUTOSTART"
+fi
 exit 0
