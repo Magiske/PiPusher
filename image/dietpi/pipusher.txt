@@ -1,0 +1,23 @@
+# PiPusher screen settings
+#
+# Edit this file on any PC after writing the image to the SD card (it is on the small "boot" drive).
+# SERVER, KEY, NAME and RESOLUTION are read at every start, so you can change them later too.
+# PASSWORD and the WIFI_ settings are only used on the very first start.
+
+# Your PiPusher server, as shown under Settings in the admin panel.
+SERVER=
+# Registration key from Settings: the screen is approved automatically. Leave empty to approve it by hand.
+KEY=
+# Screen name shown in the admin panel. Empty = the Pi's host name.
+NAME=
+
+# Password for SSH (users "root" and "dietpi"). Change it! Removed from this file after the first start.
+PASSWORD=pipusher
+
+# Wi-Fi (leave WIFI_SSID empty for a network cable). Country code: DK, DE, GB, US, ...
+WIFI_SSID=
+WIFI_KEY=
+WIFI_COUNTRY=DK
+
+# Screen resolution for the browser window: auto (from the screen) or e.g. 1920x1080.
+RESOLUTION=auto

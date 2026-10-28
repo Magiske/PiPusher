@@ -129,6 +129,43 @@ Without `--key`, the screen shows a pairing code. Approve it under **Screens**.
 | Logs | `journalctl -u pipusher -f` |
 | Uninstall | `sudo bash uninstall.sh` (`--purge` also removes config and cache) |
 
+## Raspberry Pi image (DietPi)
+
+A ready-to-flash SD card image that does nothing but show PiPusher. It is built on DietPi (minimal Debian) and set up for low memory, so that Chromium gets as much of the RAM as possible, even on a 512 MB Zero 2 W. It runs only:
+
+- X11 with Chromium in kiosk mode. There is no desktop or window manager.
+- The PiPusher agent.
+- The network (cable or Wi-Fi).
+- Dropbear, the smallest SSH server.
+- zram swap (compressed RAM, no SD card wear) and RAM logging.
+
+Bluetooth and the serial console are off. Chromium runs with low-memory flags; on boards with 1 GB of RAM or less it also uses low-end device mode.
+
+```powershell
+.\build.ps1                          # first: the image takes the agent from dist\pipusher-client-<ver>.tar.gz
+.\build-image.ps1                    # generic images for Pi 2 v1.2/3/4/400/Zero 2 W (RPi234) and Pi 5 (RPi5)
+.\build-image.ps1 -Model RPi234 -Server https://example.com/pipusher/ -Key <key> -WifiSsid Office -WifiKey secret
+                                     # personal image with the settings filled in (keep it private)
+```
+
+Output: `dist\pipusher-dietpi-<model>-<ver>.img.xz` (+ `.sha256`). The DietPi base image is downloaded once into `tools\dietpi\`, checksum verified. `image\mkimage` edits the FAT boot partition directly, so nothing needs to be mounted.
+
+**Using it:**
+1. Flash the `.img.xz` with Raspberry Pi Imager ("Use custom") or balenaEtcher.
+2. Open the SD card's boot drive on a PC and edit `pipusher.txt`. It holds `SERVER`, `KEY`, `NAME`, `PASSWORD`, `WIFI_SSID`/`WIFI_KEY`/`WIFI_COUNTRY` and `RESOLUTION`.
+3. Boot the Pi. The first start needs internet: DietPi installs X11 and Chromium (5-15 minutes), then the Pi restarts into the kiosk.
+
+`SERVER`, `KEY`, `NAME` and `RESOLUTION` are applied at every boot, so they can be changed later on the boot drive or in `/boot/firmware/pipusher.txt`. The password and Wi-Fi settings are used on the first start and then blanked in the file. SSH: `ssh dietpi@<host>` (default password `pipusher`; set your own in `pipusher.txt`).
+
+The kit is in `image\dietpi\`:
+
+| File | Role |
+|---|---|
+| `Automation_Custom_PreScript.sh` | Moves the pipusher.txt settings into DietPi's settings |
+| `Automation_Custom_Script.sh` | Installs the agent and its services |
+| `pipusher/pipusher-bootconfig.sh` | Every boot: writes the agent config and the screen size |
+| `pipusher/chromium-flags.sh` | Kiosk and memory flags; waits for the agent |
+
 ## Windows screen
 
 A Windows 10/11 PC with Google Chrome (or Edge) can act as a full screen, just like a Pi. Content is cached for offline playback, and screenshots, status and remote commands all work. Unpack `pipusher-client-windows-<ver>.zip` (it is also in the `windows\` folder of the client package) and run, as a normal user. For Windows 7, 8 or 8.1 use `pipusher-client-windows7-8-<ver>.zip` instead (Chrome 109 is the last Chrome for those):
@@ -197,6 +234,10 @@ server/            PHP application (upload this)
 client/            Go agent (stdlib only)
   web/               embedded player page (player.js/css copied by build.ps1)
   install/           install.sh, pipusher-kiosk.sh, uninstall.sh
+image/             Raspberry Pi DietPi image
+  dietpi/            first-boot scripts and pipusher.txt (copied to the boot partition)
+  mkimage/           FAT boot partition editor (Go, go-diskfs)
 build.ps1          cross-compile + package
+build-image.ps1    DietPi SD card images (after build.ps1)
 setup-tools.ps1    download Go + PHP into tools/
 ```
