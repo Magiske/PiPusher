@@ -97,9 +97,10 @@ EOF
   echo "==> Wrote $CONF"
 fi
 
-# Allow the agent to reboot the Pi (remote "Reboot" command).
+# Allow the agent to reboot the Pi (remote "Reboot" command) and to put a downloaded new version
+# of itself in place (remote "Update client" command; only this exact command).
 cat > /etc/sudoers.d/pipusher <<EOF
-$RUN_USER ALL=(root) NOPASSWD: /sbin/reboot, /usr/sbin/reboot
+$RUN_USER ALL=(root) NOPASSWD: /sbin/reboot, /usr/sbin/reboot, /usr/bin/install -m 0755 /var/lib/pipusher/update/pipusher /usr/local/bin/pipusher
 EOF
 chmod 0440 /etc/sudoers.d/pipusher
 

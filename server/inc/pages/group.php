@@ -77,7 +77,8 @@ page_header($group['name'], 'devices');
     <p class="muted">Sent to all <?= count($members) ?> screen(s); runs on their next sync (within <?= poll_interval() ?> s).</p>
     <div class="row wrap">
       <?php foreach (PP_COMMANDS as $cmd => $label): ?>
-        <?= post_button(['do' => 'command', 'command' => $cmd], $label, 'btn', $cmd === 'reboot' ? 'Reboot all screens in this group?' : null) ?>
+        <?= post_button(['do' => 'command', 'command' => $cmd], $label, 'btn', ['reboot' => 'Reboot all screens in this group?',
+            'update' => 'Update the client on all screens in this group to ' . PP_VERSION . '? Screens already on it are left alone.'][$cmd] ?? null) ?>
       <?php endforeach; ?>
     </div>
     <?php if ($following < count($members)): ?>

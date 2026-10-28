@@ -9,7 +9,7 @@ const PP_ORIENTATIONS = [
 ];
 const PP_FITS = ['contain' => 'Contain', 'cover' => 'Cover (crop)', 'fill' => 'Stretch'];
 const PP_TRANSITIONS = ['fade' => 'Fade', 'none' => 'None', 'slide' => 'Slide'];
-const PP_COMMANDS = ['reload' => 'Reload player', 'sync' => 'Sync now', 'reboot' => 'Reboot device', 'screenshot' => 'Take screenshot'];
+const PP_COMMANDS = ['reload' => 'Reload player', 'sync' => 'Sync now', 'reboot' => 'Reboot device', 'screenshot' => 'Take screenshot', 'update' => 'Update client'];
 
 const PP_MIME = [
     'html' => 'text/html; charset=utf-8', 'htm' => 'text/html; charset=utf-8',
@@ -102,6 +102,21 @@ function client_downloads(): array
         }
     }
     return $list;
+}
+
+/**
+ * Which client package (client_downloads() key) a device gets for the "update" command. Windows clients
+ * built with Go 1.20 (Windows 7/8.1, 32-bit) stay on the Windows 7/8 package.
+ */
+function client_package_for(string $os, string $arch, string $goVersion): string
+{
+    if ($os === 'linux') {
+        return 'pi';
+    }
+    if ($os === 'windows') {
+        return $arch === '386' || str_starts_with($goVersion, 'go1.20') ? 'windows7' : 'windows';
+    }
+    return '';
 }
 
 /** Download link for a client package; includes the registration key so devices can fetch it without logging in. */

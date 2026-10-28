@@ -10,6 +10,8 @@
  *        -> {status: pending|nolayout|ready, code, name, poll_interval, screenshot_interval, commands[], version, config?}
  *   GET  api.php?action=file&media=<id>&path=<relative path>   -> raw file (approved devices only)
  *   POST api.php?action=screenshot   body: image/jpeg            -> stores the screen's latest screenshot
+ *   GET  api.php?action=client&os=<goos>&arch=<goarch>&go=<go version>
+ *        -> this server's client package for the device (header X-PiPusher-Version), for the "update" command
  */
 declare(strict_types=1);
 require __DIR__ . '/inc/bootstrap.php';
@@ -98,6 +100,21 @@ if ($action === 'file') {
         json_out(['error' => 'not found'], 404);
     }
     send_file($abs);
+}
+
+if ($action === 'client') {
+    [$uuid, $secret] = device_from_auth();
+    $device = q1('SELECT * FROM devices WHERE uuid = ?', [$uuid]);
+    if (!$device || !hash_equals($device['secret_hash'], hash('sha256', $secret)) || $device['status'] !== 'approved') {
+        json_out(['error' => 'not authorised'], 403);
+    }
+    $file = client_package_for((string)($_GET['os'] ?? ''), (string)($_GET['arch'] ?? ''), (string)($_GET['go'] ?? ''));
+    $d = client_downloads()[$file] ?? null;
+    if (!$d || empty($d['path'])) {
+        json_out(['error' => 'this server has no client package for ' . ($_GET['os'] ?? '') . '/' . ($_GET['arch'] ?? '')], 404);
+    }
+    header('X-PiPusher-Version: ' . PP_VERSION);
+    send_file($d['path']);
 }
 
 if ($action === 'screenshot') {

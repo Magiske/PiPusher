@@ -92,6 +92,9 @@ type Agent struct {
 	lastShot     time.Time
 	shotErr      string
 	shotMu       sync.Mutex // held while a screenshot is in progress
+	updErr       string
+	updMu        sync.Mutex    // held while a client update is in progress
+	restart      chan struct{} // closed after a client update: main exits so the new version starts
 	playing      Playing
 }
 
@@ -103,6 +106,7 @@ func NewAgent(cfg Config) (*Agent, error) {
 		cfg:      cfg,
 		started:  time.Now(),
 		wake:     make(chan struct{}, 1),
+		restart:  make(chan struct{}),
 		interval: time.Duration(maxInt(10, cfg.PollInterval)) * time.Second,
 		cache:    NewCache(cfg.DataDir),
 	}
@@ -362,6 +366,8 @@ func (a *Agent) runCommand(ctx context.Context, cmd string) {
 		a.mu.Unlock()
 	case "sync":
 		a.TriggerSync()
+	case "update":
+		go a.selfUpdate(ctx)
 	case "reboot":
 		go func() {
 			time.Sleep(2 * time.Second)

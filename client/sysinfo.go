@@ -15,11 +15,13 @@ func (a *Agent) systemInfo() map[string]any {
 	info := map[string]any{
 		"os":               runtime.GOOS,
 		"arch":             runtime.GOARCH,
+		"go_version":       runtime.Version(),
 		"local_ip":         localIP(),
 		"agent_uptime_s":   int(time.Since(a.started).Seconds()),
 		"playing_version":  a.st.Version,
 		"last_error":       a.lastErr,
 		"screenshot_error": a.shotErr,
+		"update_error":     a.updErr,
 		"playing_layout":   a.playing.Name,
 		"cache_size":       a.cache.Size(),
 	}

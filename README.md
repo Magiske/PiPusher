@@ -51,7 +51,16 @@ The `VERSION` file is the single source of the version number. The build stamps 
 - `pipusher-server-<ver>.zip` is the PHP application. It also contains the three client packages in `downloads/`, so screens can download the client straight from your server (see *Settings*).
 - `pipusher-windows-amd64-<ver>.exe` is the client for local testing.
 
-**Updating:** upload the new server files over the old ones; `data/` and `config.php` are not in the zip, so your content stays. On each Pi, unpack the new client package and run `sudo bash install.sh` again; it keeps the configuration and cache.
+**Updating:** upload the new server files over the old ones; `data/` and `config.php` are not in the zip, so your content stays.
+
+Then update the screens. Open a screen and choose **Update client to <ver>**, or use **Update client** on a group to update all of its screens.
+
+- The screen downloads the client package bundled with the server.
+- It checks that the new program runs and that its version matches the server's.
+- It then replaces its own program and restarts. Its configuration and cache stay, and content keeps playing.
+- If an update fails, the reason is shown on the screen's page.
+
+Clients older than 1.9.0 can't update themselves. Install them once by hand: on a Pi, unpack the new client package and run `sudo bash install.sh` again; on Windows, run `install.ps1` again. On Linux, the installer adds a sudo rule that lets the agent run exactly one command, `/usr/bin/install -m 0755 /var/lib/pipusher/update/pipusher /usr/local/bin/pipusher`.
 
 ## Server installation
 
@@ -217,6 +226,7 @@ All device requests send `X-Device-Auth: <uuid>:<secret>`. The device generates 
 - `POST api.php?action=sync`: heartbeat and status. Returns `status` (`pending` / `nolayout` / `ready`), `version`, and the full `config` only when the version changed, plus a pending `command`.
 - `GET api.php?action=file&media=<id>&path=<path>`: downloads one media file (approved screens only).
 - `POST api.php?action=screenshot` (body: JPEG, max 5 MB): stores the screen's latest screenshot.
+- `GET api.php?action=client&os=<goos>&arch=<goarch>&go=<go version>`: the server's client package for this screen, with an `X-PiPusher-Version` header. Used by the `update` command (approved screens only).
 
 ## Project layout
 

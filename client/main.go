@@ -144,6 +144,7 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("version %s, server %q, data %s, player http://%s/", version, cfg.ServerURL, cfg.DataDir, cfg.Listen)
+	removeOldExecutable()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -156,8 +157,12 @@ func main() {
 	}()
 	go agent.Run(ctx)
 
-	<-ctx.Done()
-	log.Print("shutting down")
+	select {
+	case <-ctx.Done():
+		log.Print("shutting down")
+	case <-agent.restart:
+		log.Print("restarting for the new version")
+	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutdownCtx)

@@ -18,9 +18,10 @@ install -m 0755 "$SRC/$BIN" /usr/local/bin/pipusher
 install -m 0755 "$SRC/pipusher-bootconfig.sh" /usr/local/bin/pipusher-bootconfig
 install -D -m 0644 "$SRC/chromium-flags.sh" /etc/chromium.d/pipusher
 
-# The agent and the kiosk run as the normal user "dietpi"; it may reboot for the remote Reboot command.
+# The agent and the kiosk run as the normal user "dietpi"; it may reboot for the remote Reboot command
+# and put a downloaded new version of itself in place for the remote Update client command.
 install -d -o dietpi -g dietpi /var/lib/pipusher
-echo 'dietpi ALL=(root) NOPASSWD: /sbin/reboot, /usr/sbin/reboot' > /etc/sudoers.d/pipusher
+echo 'dietpi ALL=(root) NOPASSWD: /sbin/reboot, /usr/sbin/reboot, /usr/bin/install -m 0755 /var/lib/pipusher/update/pipusher /usr/local/bin/pipusher' > /etc/sudoers.d/pipusher
 chmod 0440 /etc/sudoers.d/pipusher
 
 cat > /etc/systemd/system/pipusher-bootconfig.service <<'EOF'

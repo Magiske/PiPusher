@@ -141,11 +141,31 @@ page_header($device['name'], 'devices');
     <h2>Remote commands</h2>
     <p class="muted">Delivered on the screen's next sync (every <?= poll_interval() ?> s).</p>
     <div class="row">
-      <?php foreach ($commands as $cmd => $label): if ($cmd === 'screenshot') continue; ?>
+      <?php foreach ($commands as $cmd => $label): if ($cmd === 'screenshot' || $cmd === 'update') continue; ?>
         <?= post_button(['do' => 'command', 'command' => $cmd], $label, 'btn', $cmd === 'reboot' ? 'Reboot this screen?' : null) ?>
       <?php endforeach; ?>
     </div>
     <?php if ($pending): ?><p class="muted">Pending: <strong><?= h(implode(', ', array_map(fn($c) => PP_COMMANDS[$c] ?? $c, $pending))) ?></strong></p><?php endif; ?>
+    <?php if (!$web):
+        $clientVersion = (string)($info['client_version'] ?? '');
+        $package = client_downloads()[client_package_for((string)($info['os'] ?? ''), (string)($info['arch'] ?? ''), (string)($info['go_version'] ?? ''))] ?? null; ?>
+    <h3>Client</h3>
+    <?php if ($clientVersion === PP_VERSION): ?>
+      <p class="muted small">Client <?= h($clientVersion) ?>: up to date with the server.</p>
+    <?php elseif ($clientVersion !== '' && version_compare($clientVersion, '1.9.0', '<')): ?>
+      <p class="muted small">Client <?= h($clientVersion) ?>, server <?= h(PP_VERSION) ?>. Clients older than 1.9.0 cannot update
+        themselves: install the new client on the screen once (see Settings), later updates can then be sent from here.</p>
+    <?php elseif (!$package || empty($package['path'])): ?>
+      <p class="muted small">Client <?= h($clientVersion ?: '?') ?>, server <?= h(PP_VERSION) ?>. This server has no client package
+        for this screen (<?= h(($info['os'] ?? '?') . '/' . ($info['arch'] ?? '?')) ?>).</p>
+    <?php else: ?>
+      <p class="muted small">Client <?= h($clientVersion ?: '?') ?>, server <?= h(PP_VERSION) ?>. The screen downloads
+        <?= h($package['name']) ?> (<?= h(human_size((int)$package['size'])) ?>), replaces its client and restarts it; content keeps playing.</p>
+      <?= post_button(['do' => 'command', 'command' => 'update'], 'Update client to ' . PP_VERSION, 'btn',
+          'Update the client on this screen to ' . PP_VERSION . '?') ?>
+    <?php endif; ?>
+    <?php if (!empty($info['update_error'])): ?><p class="text-error small">Last update failed: <?= h($info['update_error']) ?></p><?php endif; ?>
+    <?php endif; ?>
   </div>
 
   <div class="card">
