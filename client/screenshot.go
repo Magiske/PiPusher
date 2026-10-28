@@ -122,24 +122,41 @@ func (a *Agent) capture(ctx context.Context) ([]byte, error) {
 	return data, nil
 }
 
-// findPlayerTarget asks Chromium for its open pages and picks the PiPusher player.
-func (a *Agent) findPlayerTarget(ctx context.Context) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(a.cfg.DevToolsURL, "/")+"/json/list", nil)
+type devtoolsTarget struct {
+	ID    string `json:"id"`
+	Type  string `json:"type"`
+	URL   string `json:"url"`
+	WSURL string `json:"webSocketDebuggerUrl"`
+}
+
+// devtoolsCall makes a request to the kiosk browser's DevTools HTTP endpoint (path like "/json/list").
+func (a *Agent) devtoolsCall(ctx context.Context, method, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimSuffix(a.cfg.DevToolsURL, "/")+path, nil)
 	if err != nil {
-		return "", err
+		return err
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("kiosk browser not reachable on %s (is pipusher-kiosk running?)", a.cfg.DevToolsURL)
+		return fmt.Errorf("kiosk browser not reachable on %s (is pipusher-kiosk running?)", a.cfg.DevToolsURL)
 	}
 	defer resp.Body.Close()
-	var targets []struct {
-		Type  string `json:"type"`
-		URL   string `json:"url"`
-		WSURL string `json:"webSocketDebuggerUrl"`
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("devtools %s: HTTP %d", path, resp.StatusCode)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&targets); err != nil {
-		return "", fmt.Errorf("devtools target list: %w", err)
+	if out == nil {
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("devtools %s: %w", path, err)
+	}
+	return nil
+}
+
+// findPlayerTarget asks Chromium for its open pages and picks the PiPusher player.
+func (a *Agent) findPlayerTarget(ctx context.Context) (string, error) {
+	var targets []devtoolsTarget
+	if err := a.devtoolsCall(ctx, http.MethodGet, "/json/list", &targets); err != nil {
+		return "", err
 	}
 	fallback := ""
 	for _, t := range targets {

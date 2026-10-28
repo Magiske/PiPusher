@@ -54,4 +54,8 @@ AUTOSTART=/var/lib/dietpi/dietpi-software/installed/chromium-autostart.sh
 if [ -f "$AUTOSTART" ] && ! grep -q -- '--no-memcheck' "$AUTOSTART"; then
   sed -i 's/^CHROMIUM_OPTS="--kiosk/CHROMIUM_OPTS="--no-memcheck --kiosk/' "$AUTOSTART"
 fi
+# No mouse pointer: start the X server with -nocursor (startx/xinit pass arguments after "--" to X).
+if [ -f "$AUTOSTART" ] && ! grep -q -- '-nocursor' "$AUTOSTART"; then
+  sed -i 's|^\(exec "\$STARTX" /usr/bin/chromium .*\)$|\1 -- -nocursor|' "$AUTOSTART"
+fi
 exit 0
