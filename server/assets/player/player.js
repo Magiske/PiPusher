@@ -10,7 +10,7 @@
 
   var ROTATION = { landscape: 0, portrait: 90, 'landscape-flipped': 180, 'portrait-flipped': 270 };
   var opts, root;
-  var ctx = { online: true, version: null, playing: '' };
+  var ctx = { online: true, version: null, playing: '', muted: false };
   var sequencer = null;
   var renderedKey = null;
 
@@ -34,12 +34,48 @@
       if (o.watchUrl) watch(o.state.version || null);
       return;
     }
+    setInterval(applyMute, 2000); // also catches media that HTML content adds later
     if (o.mode === 'web') {
       apply(o.state);
       setTimeout(pollWeb, 5000);
       return;
     }
     poll();
+  }
+
+  // Sound on/off for this screen (set in the admin panel). Covers the player's videos and media inside
+  // same-origin HTML content; pages from other sites (URL media) cannot be reached. Only media this
+  // function muted is unmuted again: videos muted because the browser blocked autoplay with sound stay muted.
+  function setMuted(m) {
+    m = !!m;
+    if (m === ctx.muted) return;
+    ctx.muted = m;
+    applyMute();
+  }
+
+  function applyMute() {
+    if (!root) return;
+    muteIn(root);
+    var frames = root.getElementsByTagName('iframe');
+    for (var i = 0; i < frames.length; i++) {
+      try {
+        if (frames[i].contentDocument) muteIn(frames[i].contentDocument);
+      } catch (e) { /* other site */ }
+    }
+  }
+
+  function muteIn(doc) {
+    var list = doc.querySelectorAll('video, audio');
+    for (var i = 0; i < list.length; i++) {
+      var m = list[i];
+      if (ctx.muted && !m.muted) {
+        m.muted = true;
+        m.ppMuted = true;
+      } else if (!ctx.muted && m.ppMuted) {
+        m.muted = false;
+        m.ppMuted = false;
+      }
+    }
   }
 
   function poll() {
@@ -66,6 +102,7 @@
       .then(function (r) { return r.json(); })
       .then(function (s) {
         if (s.poll_interval) opts.pollMs = s.poll_interval * 1000;
+        setMuted(s.muted);
         if ((s.commands || []).indexOf('reload') >= 0) {
           location.reload();
           return;
@@ -91,6 +128,7 @@
   }
 
   function apply(s) {
+    if (opts.mode !== 'static') setMuted(s.muted);
     ctx.online = !!s.online;
     ctx.version = s.state === 'ready' ? s.version || null : null;
     var key = s.state + '|' + (s.version || '') + '|' + (s.reload || 0);
@@ -320,18 +358,26 @@
       node = el('video');
       node.autoplay = true;
       node.playsInline = true;
-      node.muted = opts.mode === 'static';
+      node.muted = opts.mode === 'static' || ctx.muted;
+      node.ppMuted = opts.mode !== 'static' && ctx.muted;
       node.style.objectFit = zc.fit || 'contain';
     } else {
       node = el('iframe');
       node.setAttribute('allow', 'autoplay; fullscreen; encrypted-media');
       node.setAttribute('scrolling', 'no');
+      node.addEventListener('load', applyMute);
     }
     node.src = mediaUrl(m);
     if (m.type === 'video') {
       var p = node.play && node.play();
       if (p && p.catch) {
-        p.catch(function () { node.muted = true; node.play().catch(function () {}); });
+        // Autoplay with sound blocked by the browser (web screens without a click): play muted instead.
+        p.catch(function (e) {
+          if (e && e.name === 'NotAllowedError' && !node.muted) {
+            node.muted = true;
+            node.play().catch(function () {});
+          }
+        });
       }
     }
     return node;

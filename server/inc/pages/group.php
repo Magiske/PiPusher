@@ -34,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             queue_command($did, $_POST['command']);
         }
         flash('"' . PP_COMMANDS[$_POST['command']] . '" sent to ' . count($members) . ' screen(s); it runs on their next sync.');
+    } elseif ($do === 'mute') {
+        $muted = ($_POST['muted'] ?? '') === '1' ? 1 : 0;
+        x('UPDATE devices SET muted = ? WHERE group_id = ?', [$muted, $id]);
+        flash(($muted ? 'Sound muted on ' : 'Sound turned on for ') . count($members) . ' screen(s); it applies on their next sync.');
     } elseif ($do === 'delete') {
         // Screens that followed the group keep showing what it showed.
         x('UPDATE devices SET layout_id = ?, playlist_id = ? WHERE group_id = ? AND use_group_content = 1', [$group['layout_id'], $group['playlist_id'], $id]);
@@ -80,6 +84,8 @@ page_header($group['name'], 'devices');
         <?= post_button(['do' => 'command', 'command' => $cmd], $label, 'btn', ['reboot' => 'Reboot all screens in this group?',
             'update' => 'Update the client on all screens in this group to ' . PP_VERSION . '? Screens already on it are left alone.'][$cmd] ?? null) ?>
       <?php endforeach; ?>
+      <?= post_button(['do' => 'mute', 'muted' => '1'], '🔇 Mute all', 'btn') ?>
+      <?= post_button(['do' => 'mute', 'muted' => '0'], '🔊 Unmute all', 'btn') ?>
     </div>
     <?php if ($following < count($members)): ?>
       <p></p><?= post_button(['do' => 'all_follow'], 'Make all screens follow the group', 'btn btn-sm', 'Switch every screen in this group to the group content?') ?>
@@ -104,7 +110,7 @@ page_header($group['name'], 'devices');
       </a>
       <div class="wall-meta">
         <span class="dot <?= device_online($d) ? 'dot-on' : 'dot-off' ?>"></span>
-        <a href="<?= url(['p' => 'device', 'id' => $d['id']]) ?>"><strong><?= h($d['name']) ?></strong></a>
+        <a href="<?= url(['p' => 'device', 'id' => $d['id']]) ?>"><strong><?= h($d['name']) ?></strong></a><?= (int)($d['muted'] ?? 0) ? ' <span title="Sound muted">🔇</span>' : '' ?>
         <span class="muted small" data-live="last_seen"><?= h(time_ago($d['last_seen'] ? (int)$d['last_seen'] : null)) ?></span>
       </div>
       <div class="small"><?= content_label($l, $p) ?><?= !empty($info['playing_layout']) && $p ? ' <span class="muted">· now: ' . h($info['playing_layout']) . '</span>' : '' ?></div>

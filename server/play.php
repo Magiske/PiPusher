@@ -6,7 +6,7 @@
  *   play.php?screen=<token>                  the player for one web screen (link on the screen's page)
  *   play.php?key=<web player key>[&name=..]  registers this browser as a new web screen (Settings → Web player);
  *                                            a cookie remembers it, so opening the key link again reuses that screen
- *   POST play.php?screen=<token>&action=state  JSON {version, info} -> {state, version, config?, commands[], poll_interval}
+ *   POST play.php?screen=<token>&action=state  JSON {version, info} -> {state, version, config?, commands[], muted, poll_interval}
  *   play.php/<token>/<media id>/<path>        media files (path-style, so relative links in HTML bundles work)
  */
 declare(strict_types=1);
@@ -86,6 +86,7 @@ if (($_GET['action'] ?? '') === 'state') {
         'name' => $d['name'],
         'poll_interval' => poll_interval(),
         'commands' => array_values(array_filter(explode(',', (string)$d['command']))),
+        'muted' => (bool)$d['muted'],
     ];
     if ($d['status'] === 'approved') {
         [$l, $p] = effective_content($d);
@@ -112,6 +113,7 @@ if ($d['status'] === 'approved') {
         ? ['state' => 'ready', 'online' => true, 'version' => payload_version($payload), 'config' => $payload]
         : ['state' => 'nolayout', 'online' => true, 'name' => $d['name']];
 }
+$state['muted'] = (bool)$d['muted'];
 $base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
 ?><!doctype html>
 <html lang="en">

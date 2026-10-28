@@ -22,6 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_POST['command'] !== 'screenshot') {
             flash('"' . PP_COMMANDS[$_POST['command']] . '" queued; it runs on the next sync.');
         }
+    } elseif ($do === 'mute') {
+        $muted = ($_POST['muted'] ?? '') === '1' ? 1 : 0;
+        x('UPDATE devices SET muted = ? WHERE id = ?', [$muted, $id]);
+        flash($muted ? 'Sound muted; the screen goes quiet on its next sync.' : 'Sound on; the screen plays sound again from its next sync.');
     } elseif ($do === 'new_link' && is_web_screen($device)) {
         x('UPDATE devices SET web_token = ? WHERE id = ?', [random_token(16), $id]);
         flash('New link created. The old link no longer works; open the new one on the screen.');
@@ -144,7 +148,12 @@ page_header($device['name'], 'devices');
       <?php foreach ($commands as $cmd => $label): if ($cmd === 'screenshot' || $cmd === 'update') continue; ?>
         <?= post_button(['do' => 'command', 'command' => $cmd], $label, 'btn', $cmd === 'reboot' ? 'Reboot this screen?' : null) ?>
       <?php endforeach; ?>
+      <?= (int)$device['muted']
+          ? post_button(['do' => 'mute', 'muted' => '0'], '🔊 Unmute sound', 'btn btn-primary')
+          : post_button(['do' => 'mute', 'muted' => '1'], '🔇 Mute sound', 'btn') ?>
     </div>
+    <p class="muted small">Sound is <strong><?= (int)$device['muted'] ? 'muted' : 'on' ?></strong>. Muting covers videos and uploaded
+      HTML content; web pages from other sites (URL media) keep their own sound.</p>
     <?php if ($pending): ?><p class="muted">Pending: <strong><?= h(implode(', ', array_map(fn($c) => PP_COMMANDS[$c] ?? $c, $pending))) ?></strong></p><?php endif; ?>
     <?php if (!$web):
         $clientVersion = (string)($info['client_version'] ?? '');

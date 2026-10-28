@@ -7,7 +7,7 @@
  * the secret the first time it sees the uuid (trust on first use) and requires it afterwards.
  *
  *   POST api.php?action=sync   JSON {name, hostname, client_version, config_version, registration_key, info}
- *        -> {status: pending|nolayout|ready, code, name, poll_interval, screenshot_interval, commands[], version, config?}
+ *        -> {status: pending|nolayout|ready, code, name, poll_interval, screenshot_interval, commands[], muted, version, config?}
  *   GET  api.php?action=file&media=<id>&path=<relative path>   -> raw file (approved devices only)
  *   POST api.php?action=screenshot   body: image/jpeg            -> stores the screen's latest screenshot
  *   GET  api.php?action=client&os=<goos>&arch=<goarch>&go=<go version>
@@ -68,6 +68,7 @@ if ($action === 'sync') {
         'poll_interval' => poll_interval(),
         'screenshot_interval' => screenshot_interval(),
         'commands' => array_values(array_filter(explode(',', (string)$device['command']))),
+        'muted' => (bool)$device['muted'],
         'server_time' => now(),
     ];
     if ($device['status'] === 'approved') {

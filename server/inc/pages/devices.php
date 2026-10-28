@@ -43,7 +43,7 @@ function device_row(array $d): void
           <img data-live="thumb" src="screenshot.php?id=<?= $d['id'] ?>&amp;t=<?= (int)$d['screenshot_at'] ?>" alt="" loading="lazy" title="<?= h(time_ago((int)$d['screenshot_at'])) ?>">
         <?php else: ?><span class="thumb-none"></span><?php endif; ?>
       </a></td>
-      <td><a href="<?= url(['p' => 'device', 'id' => $d['id']]) ?>"><strong><?= h($d['name']) ?></strong></a>
+      <td><a href="<?= url(['p' => 'device', 'id' => $d['id']]) ?>"><strong><?= h($d['name']) ?></strong></a><?= (int)($d['muted'] ?? 0) ? ' <span title="Sound muted">🔇</span>' : '' ?>
         <?php if (is_web_screen($d)): ?><span class="badge badge-web" title="Web screen: plays in a browser from the server">🌐 WEB</span><?php endif; ?>
         <?php if ($d['status'] === 'pending'): ?><span class="badge badge-pending">PENDING</span><?php endif; ?></td>
       <td><code><?= h($d['code']) ?></code></td>

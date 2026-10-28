@@ -59,6 +59,7 @@ type persisted struct {
 	Name    string          `json:"name"`
 	Version string          `json:"version"`
 	Config  json.RawMessage `json:"config"`
+	Muted   bool            `json:"muted"` // sound off (set in the admin panel)
 	SavedAt time.Time       `json:"saved_at"`
 }
 
@@ -69,6 +70,7 @@ type syncResponse struct {
 	PollInterval int             `json:"poll_interval"`
 	ShotInterval int             `json:"screenshot_interval"`
 	Commands     []string        `json:"commands"`
+	Muted        bool            `json:"muted"`
 	Version      string          `json:"version"`
 	Config       json.RawMessage `json:"config"`
 	Error        string          `json:"error"`
@@ -269,7 +271,8 @@ func (a *Agent) syncOnce(ctx context.Context) error {
 		a.interval = time.Duration(maxInt(10, sr.PollInterval)) * time.Second
 	}
 	a.shotInterval = time.Duration(maxInt(0, sr.ShotInterval)) * time.Second
-	changed := a.st.Code != sr.Code || a.st.Name != sr.Name
+	changed := a.st.Code != sr.Code || a.st.Name != sr.Name || a.st.Muted != sr.Muted
+	a.st.Muted = sr.Muted
 	a.st.Code, a.st.Name = sr.Code, sr.Name
 	a.mu.Unlock()
 
@@ -389,6 +392,7 @@ type PlayerState struct {
 	Online       bool            `json:"online"`
 	Version      string          `json:"version,omitempty"`
 	Reload       int             `json:"reload"`
+	Muted        bool            `json:"muted"`
 	Server       string          `json:"server,omitempty"`
 	IP           string          `json:"ip,omitempty"`
 	AgentVersion string          `json:"agent_version"`
@@ -409,6 +413,7 @@ func (a *Agent) PlayerState() PlayerState {
 		Name:         a.st.Name,
 		Online:       a.online(),
 		Reload:       a.reload,
+		Muted:        a.st.Muted,
 		Server:       a.cfg.ServerURL,
 		IP:           localIP(),
 		AgentVersion: version,

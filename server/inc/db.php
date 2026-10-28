@@ -190,6 +190,10 @@ function migrate(PDO $pdo): void
             'ALTER TABLE users ADD COLUMN totp_last INTEGER NOT NULL DEFAULT 0',
             'ALTER TABLE users ADD COLUMN recovery_codes TEXT',
         ],
+        9 => [
+            // Sound off on this screen (videos and HTML content play muted).
+            'ALTER TABLE devices ADD COLUMN muted INTEGER NOT NULL DEFAULT 0',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

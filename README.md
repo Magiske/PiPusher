@@ -30,7 +30,11 @@ Self-hosted digital signage inspired by PiSignage and Yodeck.
 
 Portrait is handled by rotating the player, so you don't need to change the Pi's display settings. Dynamic pages are ordinary HTML/JS. The *Weather* sample shows how to fetch live data and fall back to the last values while offline. External URLs are skipped while the screen is offline.
 
-Remote commands from the admin panel: **reload player**, **sync now**, **reboot**, **take screenshot**. Screens report their status: online/offline, IP, model, CPU temperature, uptime, free disk space, cache size and last error.
+Remote commands from the admin panel: **reload player**, **sync now**, **reboot**, **take screenshot**, **update client**. Screens report their status: online/offline, IP, model, CPU temperature, uptime, free disk space, cache size and last error.
+
+**Sound**: each screen has a **Mute sound** button, and a group can mute or unmute all its screens. It applies on the screen's next sync, without reloading, and is remembered offline.
+- Muting covers videos and media in uploaded HTML content, including media the page adds later.
+- Web pages from other sites (URL media) keep their own sound.
 
 **Screenshots**: each screen uploads a screenshot every *N* minutes (Settings, default 10; 0 = on demand only). The **Take screenshot now** button on a screen's page requests one immediately, and the page updates by itself when it arrives. Thumbnails appear in the Screens list. The agent captures the page through the kiosk Chromium's DevTools port, which listens on `127.0.0.1:9222` only. Portrait captures are rotated back upright and scaled to at most 1280 px.
 
