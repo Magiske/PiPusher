@@ -19,8 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 x('INSERT INTO zones (layout_id, name, x, y, w, h, z, fit, transition) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [$newId, $z['name'], $z['x'], $z['y'], $z['w'], $z['h'], $z['z'], $z['fit'], $z['transition']]);
                 $newZone = last_id();
-                x('INSERT INTO playlist_items (zone_id, media_id, duration, position)
-                   SELECT ?, media_id, duration, position FROM playlist_items WHERE zone_id = ?', [$newZone, $z['id']]);
+                x('INSERT INTO playlist_items (zone_id, media_id, duration, size, position)
+                   SELECT ?, media_id, duration, size, position FROM playlist_items WHERE zone_id = ?', [$newZone, $z['id']]);
             }
             $pdo->commit();
             flash('Layout duplicated.');

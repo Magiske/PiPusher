@@ -197,6 +197,8 @@
     this.idx = -1;         // sequence index on screen, -1 = fallback / nothing
     this.shown = null;     // { layoutId, stage, zones }
     this.timer = null;
+    this.auto = false;     // entry without a duration: move on once every zone has played its content once
+    this.base = [];        // zone pass counts when the entry started
     this.stopped = false;
     this.next();
     // Re-check the rules regularly so time windows start and end on time.
@@ -224,16 +226,38 @@
     // Switch when the current entry's window ended, or something became eligible while idle/fallback.
     if (!currentOk && (this.idx >= 0 || ok.length)) {
       this.next();
-    } else if (currentOk && ok.length > 1 && !this.timer && this.seq[this.idx].duration > 0) {
+    } else if (currentOk && ok.length > 1 && !this.timer && !this.auto) {
       // Was the only eligible entry; others are allowed now, so start rotating again.
-      this.timer = setTimeout(function () { self.next(); }, this.seq[this.idx].duration * 1000);
+      var d = this.seq[this.idx].duration;
+      if (d > 0) this.timer = setTimeout(function () { self.next(); }, d * 1000);
+      else this.startAuto();
     }
+  };
+
+  Sequencer.prototype.startAuto = function () {
+    this.auto = true;
+    this.base = this.shown ? this.shown.zones.map(function (z) { return z.passes; }) : [];
+  };
+
+  // A zone finished a pass through its content. Returns true when the sequencer moved on to another
+  // layout, so the zone keeps its last item on screen while it fades out.
+  Sequencer.prototype.zoneDone = function (zone) {
+    if (!this.auto || this.stopped || !this.shown) return false;
+    var zones = this.shown.zones;
+    if (zones.indexOf(zone) < 0) return false;
+    for (var i = 0; i < zones.length; i++) {
+      if (zones[i].items.length && zones[i].passes <= (this.base[i] || 0)) return false;
+    }
+    var before = this.shown;
+    this.next();
+    return this.shown !== before;
   };
 
   Sequencer.prototype.next = function () {
     var self = this;
     clearTimeout(this.timer);
     this.timer = null;
+    this.auto = false;
     if (this.stopped) return;
     var el = this.eligible();
     if (!el.length) {
@@ -251,6 +275,8 @@
     this.show(e.layout);
     if (el.length > 1 && e.duration > 0) {
       this.timer = setTimeout(function () { self.next(); }, e.duration * 1000);
+    } else if (el.length > 1) {
+      this.startAuto();
     }
   };
 
@@ -262,7 +288,8 @@
       blank.style.inset = '0';
       this.shown = { layoutId: null, stage: blank, zones: [] };
     } else {
-      this.shown = buildLayout(this.layouts[layoutId], this.cfg.media || {});
+      var self = this;
+      this.shown = buildLayout(this.layouts[layoutId], this.cfg.media || {}, function (z) { return self.zoneDone(z); });
       this.shown.layoutId = layoutId;
       report(this.layouts[layoutId]);
     }
@@ -289,7 +316,7 @@
     }).catch(function () {});
   }
 
-  function buildLayout(L, media) {
+  function buildLayout(L, media, onPass) {
     var rot = ROTATION[L.orientation] || 0;
     var stage = el('div', 'pp-stage pp-layout', root);
     stage.style.background = L.background || '#000';
@@ -304,7 +331,7 @@
       ze.style.width = zc.w + '%';
       ze.style.height = zc.h + '%';
       ze.style.zIndex = zc.z;
-      zones.push(new Zone(ze, zc, media));
+      zones.push(new Zone(ze, zc, media, onPass));
     });
     return { stage: stage, zones: zones };
   }
@@ -348,9 +375,39 @@
 
   // ------------------------------------------------------------------ zones (content rotation)
 
-  function makeNode(m, zc) {
+  // Picture with its own size ("50%" of its own size, "800x600" / "800x" / "x600" pixels), centred in the zone.
+  function sizedImage(m, zc, size) {
+    var box = el('div');
+    box.style.display = 'flex';
+    box.style.alignItems = 'center';
+    box.style.justifyContent = 'center';
+    var img = el('img', null, box);
+    img.alt = '';
+    img.style.flex = 'none';
+    img.style.maxWidth = 'none';
+    var pct = /^(\d+)%$/.exec(size);
+    var px = /^(\d*)x(\d*)$/.exec(size);
+    if (pct) {
+      img.style.visibility = 'hidden';
+      img.addEventListener('load', function () {
+        img.style.width = Math.round(img.naturalWidth * pct[1] / 100) + 'px';
+        img.style.visibility = '';
+      });
+    } else if (px) {
+      img.style.width = px[1] ? px[1] + 'px' : 'auto';
+      img.style.height = px[2] ? px[2] + 'px' : 'auto';
+      img.style.objectFit = zc.fit || 'contain';
+    }
+    img.src = mediaUrl(m);
+    box.ppMedia = img; // load / error events come from the picture
+    return box;
+  }
+
+  function makeNode(m, zc, it) {
     var node;
-    if (m.type === 'image') {
+    if (m.type === 'image' && it.size) {
+      return sizedImage(m, zc, it.size);
+    } else if (m.type === 'image') {
       node = el('img');
       node.alt = '';
       node.style.objectFit = zc.fit || 'contain';
@@ -383,7 +440,7 @@
     return node;
   }
 
-  function Zone(elem, cfg, media) {
+  function Zone(elem, cfg, media, onPass) {
     this.el = elem;
     this.cfg = cfg;
     this.media = media;
@@ -392,8 +449,16 @@
     this.cur = null;
     this.timer = null;
     this.stopped = false;
+    this.passes = 0;       // times the zone has played all its content
+    this.onPass = onPass;
     this.next();
   }
+
+  // Count a finished pass. True when the layout is moving on, so the zone should stay as it is.
+  Zone.prototype.pass = function () {
+    this.passes++;
+    return !!(this.onPass && this.onPass(this));
+  };
 
   Zone.prototype.stop = function () {
     this.stopped = true;
@@ -424,9 +489,12 @@
     if (pick < 0) {
       if (this.cur) { this.cur.remove(); this.cur = null; }
       this.idx = -1;
+      if (this.pass()) return; // nothing playable counts as done
       this.timer = setTimeout(function () { self.next(); }, 5000);
       return;
     }
+    // Back at (or before) the item just shown: all content has played once.
+    if (this.idx >= 0 && pick <= this.idx && this.pass()) return;
     var it = this.items[pick];
     var m = this.media[it.media];
     var same = pick === this.idx && this.cur;
@@ -440,7 +508,8 @@
 
   Zone.prototype.show = function (it, m) {
     var self = this;
-    var node = makeNode(m, this.cfg);
+    var node = makeNode(m, this.cfg, it);
+    var media = node.ppMedia || node;
     node.className = 'pp-item pp-' + (this.cfg.transition || 'fade');
     this.el.appendChild(node);
     var prev = this.cur;
@@ -465,8 +534,8 @@
         self.timer = setTimeout(function () { self.next(); }, 2000);
       });
     } else {
-      node.addEventListener('load', reveal);
-      node.addEventListener('error', reveal);
+      media.addEventListener('load', reveal);
+      media.addEventListener('error', reveal);
     }
     setTimeout(reveal, 2500);
     this.schedule(it, m, node);
@@ -478,6 +547,12 @@
     if (m.type === 'video' && !it.duration) {
       if (single) {
         node.loop = true;
+        // A looping video fires no "ended"; a jump back to the start is the end of a pass.
+        var last = 0;
+        node.addEventListener('timeupdate', function () {
+          if (node.currentTime + 0.5 < last && self.pass()) node.pause();
+          last = node.currentTime;
+        });
         return;
       }
       node.addEventListener('ended', function () { self.next(); });

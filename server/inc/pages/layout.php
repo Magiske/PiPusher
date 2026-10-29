@@ -17,6 +17,33 @@ function item_of_layout(int $itemId, int $layoutId): ?array
     return q1('SELECT p.* FROM playlist_items p JOIN zones z ON z.id = p.zone_id WHERE p.id = ? AND z.layout_id = ?', [$itemId, $layoutId]);
 }
 
+/**
+ * Normalises a picture size: '' = fit the zone, "50" or "50%" = of the picture's own size,
+ * "800x600" = pixels, "800x" / "x600" = one side in pixels, keeping the aspect ratio. Null when invalid.
+ */
+function item_size(string $s): ?string
+{
+    $s = strtolower(str_replace([' ', '×', '*'], ['', 'x', 'x'], trim($s)));
+    if ($s === '') {
+        return '';
+    }
+    if (preg_match('/^(\d{1,4})%?$/', $s, $m)) {
+        return max(1, min(1000, (int)$m[1])) . '%';
+    }
+    if (preg_match('/^(\d{1,5})?x(\d{1,5})?$/', $s, $m) && (($m[1] ?? '') !== '' || ($m[2] ?? '') !== '')) {
+        $px = fn($v) => ($v ?? '') === '' ? '' : (string)max(1, min(10000, (int)$v));
+        return $px($m[1] ?? '') . 'x' . $px($m[2] ?? '');
+    }
+    return null;
+}
+
+/** Duration from a form field: empty = the default (videos until they end, everything else 10 s). */
+function item_duration(string $type): int
+{
+    $v = trim((string)($_POST['duration'] ?? ''));
+    return $v === '' ? ($type === 'video' ? 0 : 10) : max(0, (int)$v);
+}
+
 function renumber_zone(int $zoneId): void
 {
     foreach (q('SELECT id FROM playlist_items WHERE zone_id = ? ORDER BY position, id', [$zoneId]) as $i => $row) {
@@ -70,14 +97,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($do === 'item_add') {
         $zone = zone_of_layout((int)$_POST['zone_id'], $id);
         $media = q1('SELECT * FROM media WHERE id = ?', [(int)($_POST['media_id'] ?? 0)]);
-        if ($zone && $media) {
-            $duration = ($_POST['duration'] ?? '') === '' ? ($media['type'] === 'video' ? 0 : 10) : max(0, (int)$_POST['duration']);
+        $size = $media && $media['type'] === 'image' ? item_size((string)($_POST['size'] ?? '')) : '';
+        if ($zone && $media && $size === null) {
+            flash('Picture size must be a percentage like 50% or pixels like 800x600, 800x or x600.', 'error');
+        } elseif ($zone && $media) {
             $pos = (int)(q1('SELECT MAX(position) AS m FROM playlist_items WHERE zone_id = ?', [$zone['id']])['m'] ?? -1) + 1;
-            x('INSERT INTO playlist_items (zone_id, media_id, duration, position) VALUES (?, ?, ?, ?)', [$zone['id'], $media['id'], $duration, $pos]);
+            x('INSERT INTO playlist_items (zone_id, media_id, duration, size, position) VALUES (?, ?, ?, ?, ?)',
+                [$zone['id'], $media['id'], item_duration($media['type']), $size, $pos]);
             flash('Added "' . $media['name'] . '" to ' . $zone['name'] . '.');
         }
     } elseif ($do === 'item_save' && ($item = item_of_layout((int)$_POST['item_id'], $id))) {
-        x('UPDATE playlist_items SET duration = ? WHERE id = ?', [max(0, (int)$_POST['duration']), $item['id']]);
+        $type = (string)q1('SELECT type FROM media WHERE id = ?', [$item['media_id']])['type'];
+        $size = isset($_POST['size']) ? item_size((string)$_POST['size']) : $item['size'];
+        if ($size === null) {
+            flash('Picture size must be a percentage like 50% or pixels like 800x600, 800x or x600.', 'error');
+            $size = $item['size'];
+        }
+        x('UPDATE playlist_items SET duration = ?, size = ? WHERE id = ?', [item_duration($type), $size, $item['id']]);
     } elseif ($do === 'item_delete' && ($item = item_of_layout((int)$_POST['item_id'], $id))) {
         x('DELETE FROM playlist_items WHERE id = ?', [$item['id']]);
         renumber_zone((int)$item['zone_id']);
@@ -177,18 +213,24 @@ page_header($layout['name'], 'layouts');
     <p class="muted">Empty – this zone shows the layout background. Add content below.</p>
   <?php else: ?>
   <table class="table">
-    <thead><tr><th>#</th><th>Content</th><th>Duration (s)</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>Content</th><th>Duration (s)</th><th>Picture size</th><th></th></tr></thead>
     <tbody>
-    <?php foreach ($items as $i => $it): ?>
+    <?php foreach ($items as $i => $it): $video = $it['type'] === 'video'; $form = 'item-' . $it['id']; ?>
       <tr>
         <td><?= $i + 1 ?></td>
         <td><?= type_badge($it['type']) ?> <a href="<?= url(['p' => 'media_edit', 'id' => $it['media_id']]) ?>"><?= h($it['media_name']) ?></a></td>
         <td>
-          <form method="post" class="inline">
+          <form method="post" class="inline" id="<?= $form ?>">
             <?= csrf_field() ?><input type="hidden" name="do" value="item_save"><input type="hidden" name="item_id" value="<?= $it['id'] ?>"><input type="hidden" name="zone_id" value="<?= $z['id'] ?>">
-            <input type="number" name="duration" min="0" value="<?= (int)$it['duration'] ?>" class="num" data-autosubmit>
+            <input type="number" name="duration" min="0" value="<?= $video && !(int)$it['duration'] ? '' : (int)$it['duration'] ?>"
+              placeholder="<?= $video ? 'auto' : '10' ?>" class="num" data-autosubmit>
           </form>
-          <?php if ($it['type'] === 'video' && !(int)$it['duration']): ?><span class="muted small">until video ends</span><?php endif; ?>
+          <?php if ($video && !(int)$it['duration']): ?><span class="muted small">until video ends</span><?php endif; ?>
+        </td>
+        <td>
+          <?php if ($it['type'] === 'image'): ?>
+            <input name="size" form="<?= $form ?>" value="<?= h($it['size']) ?>" placeholder="fit zone" class="num" data-autosubmit>
+          <?php endif; ?>
         </td>
         <td class="right">
           <?= post_button(['do' => 'item_move', 'dir' => 'up', 'item_id' => $it['id'], 'zone_id' => $z['id']], '↑', 'btn btn-sm') ?>
@@ -204,9 +246,13 @@ page_header($layout['name'], 'layouts');
   <form method="post" class="row wrap align-end add-item">
     <?= csrf_field() ?><input type="hidden" name="do" value="item_add"><input type="hidden" name="zone_id" value="<?= $z['id'] ?>">
     <label class="grow">Add content <select name="media_id"><?= $mediaOptions ?></select></label>
-    <label>Duration (s) <input type="number" name="duration" min="0" placeholder="10" class="num"></label>
+    <label>Duration (s) <input type="number" name="duration" min="0" placeholder="auto" class="num"></label>
+    <label>Picture size <input name="size" placeholder="fit zone" class="num"></label>
     <button class="btn">Add</button>
   </form>
+  <p class="muted small">Duration empty: videos play to the end, everything else 10 s. Picture size empty: the picture fits the zone
+    (see Fit above). Or 50% of the picture's own size, 800x600 pixels, or one side like 800x or x600 (keeps the aspect ratio);
+    the picture is centred in the zone.</p>
   <?php else: ?>
     <p><a href="<?= url(['p' => 'media']) ?>">Upload or create media</a> first.</p>
   <?php endif; ?>

@@ -194,6 +194,10 @@ function migrate(PDO $pdo): void
             // Sound off on this screen (videos and HTML content play muted).
             'ALTER TABLE devices ADD COLUMN muted INTEGER NOT NULL DEFAULT 0',
         ],
+        10 => [
+            // Picture size in its zone: '' = fit the zone, '50%' = of the picture's own size, '800x600' / '800x' / 'x600' = pixels.
+            "ALTER TABLE playlist_items ADD COLUMN size TEXT NOT NULL DEFAULT ''",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

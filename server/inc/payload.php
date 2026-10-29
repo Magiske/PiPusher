@@ -70,8 +70,12 @@ function layout_data(int $layoutId, array &$mediaIds): ?array
     $zones = [];
     foreach (q('SELECT * FROM zones WHERE layout_id = ? ORDER BY z, id', [$layoutId]) as $z) {
         $items = [];
-        foreach (q('SELECT media_id, duration FROM playlist_items WHERE zone_id = ? ORDER BY position, id', [$z['id']]) as $it) {
-            $items[] = ['media' => (int)$it['media_id'], 'duration' => (int)$it['duration']];
+        foreach (q('SELECT media_id, duration, size FROM playlist_items WHERE zone_id = ? ORDER BY position, id', [$z['id']]) as $it) {
+            $item = ['media' => (int)$it['media_id'], 'duration' => (int)$it['duration']];
+            if ($it['size'] !== '') {
+                $item['size'] = $it['size'];
+            }
+            $items[] = $item;
             $mediaIds[(int)$it['media_id']] = true;
         }
         $zones[] = [

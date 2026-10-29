@@ -18,7 +18,8 @@ function entry_fields(): array
     $time = fn($k) => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)($_POST[$k] ?? '')) ? $_POST[$k] : '';
     $date = fn($k) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_POST[$k] ?? '')) ? $_POST[$k] : '';
     return [
-        'duration' => max(5, min(86400, (int)($_POST['duration'] ?? 60))),
+        // Empty = 0 = until the layout's content has played once (videos to the end).
+        'duration' => trim((string)($_POST['duration'] ?? '')) === '' ? 0 : max(5, min(86400, (int)$_POST['duration'])),
         'days' => count($days) === 7 ? '' : implode(',', $days),
         'time_from' => $time('time_from'),
         'time_to' => $time('time_to'),
@@ -96,7 +97,8 @@ function entry_form_fields(array $e, array $layouts): string
     ob_start(); ?>
     <div class="entry-grid">
       <label>Layout <select name="layout_id" required><?= select_options($layouts, $e['layout_id'] ?? '') ?></select></label>
-      <label>Show for (seconds) <input type="number" name="duration" min="5" max="86400" value="<?= (int)($e['duration'] ?? 60) ?>" class="num"></label>
+      <label>Show for (seconds) <input type="number" name="duration" min="5" max="86400" value="<?= (int)($e['duration'] ?? 0) ?: '' ?>" placeholder="auto" class="num">
+        <span class="muted small">empty = until its content has played once</span></label>
       <fieldset class="days">
         <legend>Days <span class="muted small">(none = every day)</span></legend>
         <?php foreach ($dayNames as $n => $label): ?>
@@ -151,7 +153,7 @@ page_header($playlist['name'], 'playlists');
       <summary>
         <span class="entry-num"><?= $i + 1 ?></span>
         <span class="entry-main"><strong><?= h($e['layout_name']) ?></strong>
-          <span class="muted"><?= (int)$e['duration'] ?> s · <?= h(describe_when($e)) ?></span></span>
+          <span class="muted"><?= (int)$e['duration'] ? (int)$e['duration'] . ' s' : 'until content ends' ?> ·<?= h(describe_when($e)) ?></span></span>
         <?php if ($active): ?><span class="badge badge-active">ACTIVE NOW</span><?php endif; ?>
         <span class="entry-actions">
           <?= post_button(['do' => 'move', 'dir' => 'up', 'entry_id' => $e['id']], '↑', 'btn btn-sm') ?>
@@ -184,7 +186,7 @@ page_header($playlist['name'], 'playlists');
   <?php else: ?>
   <form method="post" class="entry-form">
     <?= csrf_field() ?><input type="hidden" name="do" value="add">
-    <?= entry_form_fields(['days' => '', 'duration' => 60], $layouts) ?>
+    <?= entry_form_fields(['days' => ''], $layouts) ?>
     <div class="row"><button class="btn btn-primary">Add to queue</button></div>
   </form>
   <p class="muted small">Examples: <em>Mon–Fri 08:00–16:00</em> for opening hours · <em>1 Dec – 26 Dec, every year</em> for Christmas ·
