@@ -144,10 +144,29 @@
     sequencer = null;
     root.innerHTML = '';
     if (s.state !== 'ready' || !s.config) {
+      setFrame(null);
       showMessage(s);
       return;
     }
+    setFrame(s.config.screen);
     sequencer = new Sequencer(normalise(s.config));
+  }
+
+  // Screen alignment (admin panel): the player's area on the display, x / y / w / h in %. Layouts fill this area.
+  function setFrame(f) {
+    var st = root.style;
+    if (!f) {
+      ['left', 'top', 'right', 'bottom', 'width', 'height', '--pp-w', '--pp-h'].forEach(function (p) { st.removeProperty(p); });
+      return;
+    }
+    st.left = f.x + '%';
+    st.top = f.y + '%';
+    st.right = 'auto';
+    st.bottom = 'auto';
+    st.width = f.w + '%';
+    st.height = f.h + '%';
+    st.setProperty('--pp-w', 'calc(100vw * ' + f.w / 100 + ')');
+    st.setProperty('--pp-h', 'calc(100vh * ' + f.h / 100 + ')');
   }
 
   // Older configurations contained a single "layout"; turn them into a one-entry sequence.
@@ -320,8 +339,8 @@
     var rot = ROTATION[L.orientation] || 0;
     var stage = el('div', 'pp-stage pp-layout', root);
     stage.style.background = L.background || '#000';
-    stage.style.width = rot % 180 ? '100vh' : '100vw';
-    stage.style.height = rot % 180 ? '100vw' : '100vh';
+    stage.style.width = rot % 180 ? 'var(--pp-h, 100vh)' : 'var(--pp-w, 100vw)';
+    stage.style.height = rot % 180 ? 'var(--pp-w, 100vw)' : 'var(--pp-h, 100vh)';
     stage.style.transform = 'translate(-50%, -50%) rotate(' + rot + 'deg)';
     var zones = [];
     L.zones.slice().sort(function (a, b) { return a.z - b.z; }).forEach(function (zc) {

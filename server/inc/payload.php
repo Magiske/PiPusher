@@ -151,6 +151,27 @@ function effective_content(array $d): array
     return [$d['layout_id'] ? (int)$d['layout_id'] : null, $d['playlist_id'] ? (int)$d['playlist_id'] : null, 'own'];
 }
 
+/**
+ * The screen's alignment: where the player sits on the display, as x, y, w, h in % of the display.
+ * Null when it is the default 0, 0, 100, 100. Layout zones are placed inside this area.
+ */
+function screen_frame(array $d): ?array
+{
+    $f = ['x' => (float)$d['frame_x'], 'y' => (float)$d['frame_y'], 'w' => (float)$d['frame_w'], 'h' => (float)$d['frame_h']];
+    return $f === ['x' => 0.0, 'y' => 0.0, 'w' => 100.0, 'h' => 100.0] ? null : $f;
+}
+
+/** The content payload for a screen: its effective content plus its alignment ("screen"), or null when it shows nothing. */
+function screen_payload(array $d): ?array
+{
+    [$layout, $playlist] = effective_content($d);
+    $payload = content_payload($layout, $playlist);
+    if ($payload !== null && ($frame = screen_frame($d))) {
+        $payload['screen'] = $frame;
+    }
+    return $payload;
+}
+
 /** What a newly registered screen starts with (Settings): [layout id|null, playlist id|null, group id|null]. */
 function new_screen_defaults(): array
 {

@@ -89,8 +89,7 @@ if (($_GET['action'] ?? '') === 'state') {
         'muted' => (bool)$d['muted'],
     ];
     if ($d['status'] === 'approved') {
-        [$l, $p] = effective_content($d);
-        $payload = content_payload($l, $p);
+        $payload = screen_payload($d);
         $resp['state'] = $payload ? 'ready' : 'nolayout';
         if ($payload) {
             $resp['version'] = payload_version($payload);
@@ -107,8 +106,7 @@ if (!$d) {
 }
 $state = ['state' => 'pending', 'online' => true, 'code' => $d['code'], 'name' => $d['name']];
 if ($d['status'] === 'approved') {
-    [$l, $p] = effective_content($d);
-    $payload = content_payload($l, $p);
+    $payload = screen_payload($d);
     $state = $payload
         ? ['state' => 'ready', 'online' => true, 'version' => payload_version($payload), 'config' => $payload]
         : ['state' => 'nolayout', 'online' => true, 'name' => $d['name']];

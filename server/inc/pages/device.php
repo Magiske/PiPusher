@@ -22,6 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_POST['command'] !== 'screenshot') {
             flash('"' . PP_COMMANDS[$_POST['command']] . '" queued; it runs on the next sync.');
         }
+    } elseif ($do === 'frame') {
+        $num = fn($k, $def, $min, $max) => ($v = trim((string)($_POST[$k] ?? ''))) === '' ? $def : max($min, min($max, round((float)str_replace(',', '.', $v), 2)));
+        $frame = ($_POST['reset'] ?? '') === '1' ? [0, 0, 100, 100]
+            : [$num('frame_x', 0, -100, 100), $num('frame_y', 0, -100, 100), $num('frame_w', 100, 10, 200), $num('frame_h', 100, 10, 200)];
+        x('UPDATE devices SET frame_x = ?, frame_y = ?, frame_w = ?, frame_h = ? WHERE id = ?', [...$frame, $id]);
+        flash('Screen alignment saved; the screen picks it up on its next sync.');
     } elseif ($do === 'mute') {
         $muted = ($_POST['muted'] ?? '') === '1' ? 1 : 0;
         x('UPDATE devices SET muted = ? WHERE id = ?', [$muted, $id]);
@@ -175,6 +181,22 @@ page_header($device['name'], 'devices');
     <?php endif; ?>
     <?php if (!empty($info['update_error'])): ?><p class="text-error small">Last update failed: <?= h($info['update_error']) ?></p><?php endif; ?>
     <?php endif; ?>
+  </div>
+
+  <div class="card">
+    <h2>Screen alignment</h2>
+    <form method="post" class="row wrap align-end">
+      <?= csrf_field() ?><input type="hidden" name="do" value="frame">
+      <?php foreach (['frame_x' => 'X', 'frame_y' => 'Y', 'frame_w' => 'W', 'frame_h' => 'H'] as $k => $label): ?>
+        <label><?= $label ?> (%) <input type="number" name="<?= $k ?>" step="0.1" value="<?= h((string)(float)$device[$k]) ?>" class="num"></label>
+      <?php endforeach; ?>
+      <button class="btn">Save alignment</button>
+      <?php if (screen_frame($device)): ?><button class="btn" name="reset" value="1">Reset</button><?php endif; ?>
+    </form>
+    <p class="muted small">Moves and sizes the whole picture on this screen, in % of the display: X and Y move it (negative = left / up),
+      W and H size it (default 100, above 100 overscans). Use it to line up a display that crops or shifts the picture.
+      Layout zones are placed inside this area, so layouts need no changes. Currently
+      <strong><?= screen_frame($device) ? h("{$device['frame_w']}% × {$device['frame_h']}% at {$device['frame_x']}%, {$device['frame_y']}%") : 'full screen (default)' ?></strong>.</p>
   </div>
 
   <div class="card">

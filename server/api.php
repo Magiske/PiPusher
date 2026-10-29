@@ -72,8 +72,7 @@ if ($action === 'sync') {
         'server_time' => now(),
     ];
     if ($device['status'] === 'approved') {
-        [$showLayout, $showPlaylist] = effective_content($device);
-        $payload = content_payload($showLayout, $showPlaylist);
+        $payload = screen_payload($device);
         if ($payload === null) {
             $resp['status'] = 'nolayout';
         } else {

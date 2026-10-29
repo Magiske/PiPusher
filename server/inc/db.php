@@ -198,6 +198,13 @@ function migrate(PDO $pdo): void
             // Picture size in its zone: '' = fit the zone, '50%' = of the picture's own size, '800x600' / '800x' / 'x600' = pixels.
             "ALTER TABLE playlist_items ADD COLUMN size TEXT NOT NULL DEFAULT ''",
         ],
+        11 => [
+            // Screen alignment: the player's area on the display in % (layouts are placed inside it).
+            'ALTER TABLE devices ADD COLUMN frame_x REAL NOT NULL DEFAULT 0',
+            'ALTER TABLE devices ADD COLUMN frame_y REAL NOT NULL DEFAULT 0',
+            'ALTER TABLE devices ADD COLUMN frame_w REAL NOT NULL DEFAULT 100',
+            'ALTER TABLE devices ADD COLUMN frame_h REAL NOT NULL DEFAULT 100',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {
