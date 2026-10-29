@@ -58,4 +58,6 @@ EOF
 systemctl daemon-reload
 systemctl enable pipusher-bootconfig.service pipusher.service
 /usr/local/bin/pipusher-bootconfig
-echo "PiPusher: agent $(/usr/local/bin/pipusher -version) installed; the kiosk starts after the reboot"
+# Start the agent now: DietPi may start the kiosk without rebooting after this script.
+systemctl start pipusher.service
+echo "PiPusher: agent $(/usr/local/bin/pipusher -version) installed and started"

@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -98,6 +99,7 @@ type Agent struct {
 	updMu        sync.Mutex    // held while a client update is in progress
 	restart      chan struct{} // closed after a client update: main exits so the new version starts
 	playing      Playing
+	playerSeen   atomic.Int64 // unix nanoseconds of the player page's last /api/state request
 }
 
 func NewAgent(cfg Config) (*Agent, error) {

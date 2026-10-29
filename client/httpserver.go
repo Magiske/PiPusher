@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 //go:embed web
@@ -32,6 +33,7 @@ func (a *Agent) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/", onlyMethod("GET", noCache(static)))
 	mux.Handle("/api/state", onlyMethod("GET", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		a.playerSeen.Store(time.Now().UnixNano())
 		writeJSON(w, a.PlayerState())
 	})))
 	mux.Handle("/api/health", onlyMethod("GET", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
