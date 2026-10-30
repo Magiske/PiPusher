@@ -3,7 +3,7 @@
 Self-hosted digital signage inspired by PiSignage and Yodeck.
 
 - **Server**: a PHP web application, with SQLite and no other dependencies. Upload it to any PHP host. The admin panel controls every screen.
-- **Client**: a single Go binary on a Raspberry Pi. It downloads and caches content from the server and serves a local player that Chromium shows full screen in kiosk mode. **If the server can't be reached, it keeps playing from its cache**, even after a reboot.
+- **Client**: a single Go binary on a Raspberry Pi or Windows 10/11. It downloads and caches content from the server and serves a local player that Chromium shows full screen in kiosk mode. **If the server can't be reached, it keeps playing from its cache**, even after a reboot.
 - **Web player** (online only): any browser can be a screen by opening a secret link. It needs no client and no login, but it has no offline cache.
 
 ```
