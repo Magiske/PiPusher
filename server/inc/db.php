@@ -205,6 +205,16 @@ function migrate(PDO $pdo): void
             'ALTER TABLE devices ADD COLUMN frame_w REAL NOT NULL DEFAULT 100',
             'ALTER TABLE devices ADD COLUMN frame_h REAL NOT NULL DEFAULT 100',
         ],
+        12 => [
+            // Folders (one level) to organise layouts.
+            "CREATE TABLE layout_folders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            )",
+            'ALTER TABLE layouts ADD COLUMN folder_id INTEGER REFERENCES layout_folders(id) ON DELETE SET NULL',
+            'CREATE INDEX idx_layouts_folder ON layouts(folder_id)',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

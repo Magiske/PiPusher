@@ -96,7 +96,7 @@ function entry_form_fields(array $e, array $layouts): string
     $days = array_filter(explode(',', (string)$e['days']));
     ob_start(); ?>
     <div class="entry-grid">
-      <label>Layout <select name="layout_id" required><?= select_options($layouts, $e['layout_id'] ?? '') ?></select></label>
+      <label>Layout <select name="layout_id" required><?= layout_options($e['layout_id'] ?? '') ?></select></label>
       <label>Show for (seconds) <input type="number" name="duration" min="5" max="86400" value="<?= (int)($e['duration'] ?? 0) ?: '' ?>" placeholder="auto" class="num">
         <span class="muted small">empty = until its content has played once</span></label>
       <fieldset class="days">
@@ -127,7 +127,7 @@ page_header($playlist['name'], 'playlists');
     <?= csrf_field() ?><input type="hidden" name="do" value="settings">
     <label>Name <input name="name" value="<?= h($playlist['name']) ?>" required></label>
     <label>When nothing is scheduled, show
-      <select name="fallback_layout_id"><?= select_options(['' => '— a blank screen —'] + $layouts, $playlist['fallback_layout_id'] ?? '') ?></select></label>
+      <select name="fallback_layout_id"><?= layout_options($playlist['fallback_layout_id'] ?? '', '— a blank screen —') ?></select></label>
     <button class="btn">Save</button>
   </form>
   <p class="muted small">Screens using this playlist:

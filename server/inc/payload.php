@@ -254,11 +254,66 @@ function content_options(?int $layoutId, ?int $playlistId, string $noneLabel = '
         }
         $out .= '</optgroup>';
     }
-    $out .= '<optgroup label="Single layout">';
-    foreach (q('SELECT id, name FROM layouts ORDER BY name COLLATE NOCASE') as $l) {
-        $out .= '<option value="layout:' . $l['id'] . '"' . ($layoutId === (int)$l['id'] && !$playlistId ? ' selected' : '') . '>' . h($l['name']) . '</option>';
+    foreach (layouts_by_folder() as $fid => $list) {
+        $out .= '<optgroup label="' . h($fid ? 'Single layout · 📁 ' . layout_folders()[$fid]['name'] : 'Single layout') . '">';
+        foreach ($list as $l) {
+            $out .= '<option value="layout:' . $l['id'] . '"' . ($layoutId === (int)$l['id'] && !$playlistId ? ' selected' : '') . '>' . h($l['name']) . '</option>';
+        }
+        $out .= '</optgroup>';
     }
-    return $out . '</optgroup>';
+    return $out;
+}
+
+// ---------------------------------------------------------------- layout folders
+
+/** All layout folders keyed by id, sorted by name. */
+function layout_folders(): array
+{
+    static $folders = null;
+    if ($folders === null) {
+        $folders = [];
+        foreach (q('SELECT * FROM layout_folders ORDER BY name COLLATE NOCASE') as $f) {
+            $folders[(int)$f['id']] = $f;
+        }
+    }
+    return $folders;
+}
+
+function valid_layout_folder_id($value): ?int
+{
+    $id = (int)$value;
+    return $id && isset(layout_folders()[$id]) ? $id : null;
+}
+
+/** Layouts grouped by folder: [0 => top-level layouts, folder id => layouts, ...] in folder name order, empty groups left out. */
+function layouts_by_folder(): array
+{
+    $groups = [0 => []] + array_fill_keys(array_keys(layout_folders()), []);
+    foreach (q('SELECT id, name, orientation, folder_id FROM layouts ORDER BY name COLLATE NOCASE') as $l) {
+        $groups[isset($groups[(int)$l['folder_id']]) ? (int)$l['folder_id'] : 0][] = $l;
+    }
+    return array_filter($groups);
+}
+
+/** <option>s for picking a layout, grouped by folder; $none adds an empty first option with that label. */
+function layout_options($selected, ?string $none = null): string
+{
+    $out = $none !== null ? '<option value="">' . h($none) . '</option>' : '';
+    foreach (layouts_by_folder() as $fid => $list) {
+        $out .= '<optgroup label="' . h($fid ? '📁 ' . layout_folders()[$fid]['name'] : 'Layouts') . '">';
+        foreach ($list as $l) {
+            $label = $l['name'] . (str_starts_with($l['orientation'], 'portrait') ? ' (portrait)' : '');
+            $out .= '<option value="' . $l['id'] . '"' . ((string)$l['id'] === (string)$selected ? ' selected' : '') . '>' . h($label) . '</option>';
+        }
+        $out .= '</optgroup>';
+    }
+    return $out;
+}
+
+/** <option>s for picking a layout folder ("" = top level). */
+function layout_folder_options(?int $selected): string
+{
+    return select_options(['' => 'Layouts (top level)'] + array_map(fn($f) => '📁 ' . $f['name'], layout_folders()), $selected ?? '');
 }
 
 /** Human summary of a playlist entry's rules, e.g. "Mon–Fri · 08:00–17:00 · 01 Dec – 31 Dec yearly". */

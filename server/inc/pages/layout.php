@@ -56,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($do === 'settings') {
         $bg = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($_POST['background'] ?? '')) ? $_POST['background'] : '#000000';
         $orientation = isset(PP_ORIENTATIONS[$_POST['orientation'] ?? '']) ? $_POST['orientation'] : 'landscape';
-        x('UPDATE layouts SET name = ?, orientation = ?, background = ?, updated_at = ? WHERE id = ?',
-            [trim((string)$_POST['name']) ?: $layout['name'], $orientation, $bg, now(), $id]);
+        x('UPDATE layouts SET name = ?, orientation = ?, background = ?, folder_id = ?, updated_at = ? WHERE id = ?',
+            [trim((string)$_POST['name']) ?: $layout['name'], $orientation, $bg, valid_layout_folder_id($_POST['folder_id'] ?? null), now(), $id]);
         flash('Layout settings saved.');
     } elseif ($do === 'zones') {
         $zones = json_decode((string)($_POST['zones_json'] ?? ''), true);
@@ -159,7 +159,10 @@ $templates = array_map(fn($t) => ['label' => $t['label'], 'zones' => array_map(
 page_header($layout['name'], 'layouts');
 ?>
 <div class="page-head">
-  <h1><?= h($layout['name']) ?></h1>
+  <h1 class="crumbs"><a href="<?= url(['p' => 'layouts']) ?>">Layouts</a> <span class="muted">/</span>
+    <?php if ($layout['folder_id'] && isset(layout_folders()[(int)$layout['folder_id']])): ?>
+      <a href="<?= url(['p' => 'layouts', 'folder' => (int)$layout['folder_id']]) ?>">📁 <?= h(layout_folders()[(int)$layout['folder_id']]['name']) ?></a> <span class="muted">/</span>
+    <?php endif; ?><?= h($layout['name']) ?></h1>
   <a class="btn btn-primary" target="_blank" href="preview.php?layout=<?= $id ?>">Preview ↗</a>
 </div>
 
@@ -169,6 +172,7 @@ page_header($layout['name'], 'layouts');
     <label>Name <input name="name" value="<?= h($layout['name']) ?>" required></label>
     <label>Orientation <select name="orientation"><?= select_options(PP_ORIENTATIONS, $layout['orientation']) ?></select></label>
     <label>Background <input type="color" name="background" value="<?= h($layout['background']) ?>"></label>
+    <label>Folder <select name="folder_id"><?= layout_folder_options($layout['folder_id'] ? (int)$layout['folder_id'] : null) ?></select></label>
     <button class="btn">Save settings</button>
   </form>
   <p class="muted small">Portrait layouts are rotated by the player, so the Pi's display output can stay in its normal landscape mode.
