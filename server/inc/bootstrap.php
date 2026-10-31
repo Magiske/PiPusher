@@ -17,6 +17,7 @@ if (is_file(PP_ROOT . '/config.php')) {
 define('PP_DATA', rtrim((string)$ppConfig['data_dir'], '/\\'));
 define('PP_MEDIA', PP_DATA . '/media');
 define('PP_SCREENS', PP_DATA . '/screenshots');
+define('PP_PREVIEWS', PP_DATA . '/previews');
 
 require __DIR__ . '/db.php';
 require __DIR__ . '/functions.php';

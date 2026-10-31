@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($do === 'delete') {
         x('DELETE FROM layouts WHERE id = ?', [(int)$_POST['id']]);
+        @unlink(layout_preview_path((int)$_POST['id']));
         flash('Layout deleted.');
     } elseif ($do === 'move') {
         $target = valid_layout_folder_id($_POST['folder_id'] ?? null);
@@ -98,9 +99,11 @@ page_header($current ? $current['name'] : 'Layouts', 'layouts');
     $portrait = str_starts_with($l['orientation'], 'portrait'); ?>
   <div class="card layout-card">
     <a href="<?= url(['p' => 'layout', 'id' => $l['id']]) ?>" class="mini-stage <?= $portrait ? 'portrait' : '' ?>" style="background:<?= h($l['background']) ?>">
-      <?php foreach ($zones as $z): ?>
+      <?php if ($l['preview_at']): ?>
+        <img src="screenshot.php?layout=<?= $l['id'] ?>&amp;t=<?= (int)$l['preview_at'] ?>" alt="" loading="lazy" title="Taken by a screen <?= h(date('Y-m-d H:i', (int)$l['preview_at'])) ?>">
+      <?php else: foreach ($zones as $z): ?>
         <span style="left:<?= $z['x'] ?>%;top:<?= $z['y'] ?>%;width:<?= $z['w'] ?>%;height:<?= $z['h'] ?>%"></span>
-      <?php endforeach; ?>
+      <?php endforeach; endif; ?>
     </a>
     <h3><a href="<?= url(['p' => 'layout', 'id' => $l['id']]) ?>"><?= h($l['name']) ?></a></h3>
     <p class="muted"><?= h(PP_ORIENTATIONS[$l['orientation']] ?? $l['orientation']) ?> · <?= (int)$l['zone_count'] ?> zone(s) · <?= count(devices_showing((int)$l['id'], null)) ?> screen(s) · <?= (int)$l['playlist_count'] ?> playlist(s)</p>

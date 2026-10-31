@@ -37,7 +37,7 @@ func (a *Agent) takeScreenshot(ctx context.Context) {
 	a.lastShot = time.Now()
 	a.mu.Unlock()
 
-	err := a.captureAndUpload(ctx)
+	err := a.captureAndUpload(ctx, "api.php?action=screenshot", false)
 	a.mu.Lock()
 	if err != nil {
 		a.shotErr = err.Error()
@@ -48,14 +48,77 @@ func (a *Agent) takeScreenshot(ctx context.Context) {
 	a.mu.Unlock()
 }
 
-func (a *Agent) captureAndUpload(ctx context.Context) error {
+// previewDelay gives a layout that just came on screen time to fade in and load its media.
+const previewDelay = 8 * time.Second
+
+// setPreviewsWanted records the layouts the server wants a preview of (Settings: layout previews).
+func (a *Agent) setPreviewsWanted(ctx context.Context, ids []int) {
+	want := make(map[int]bool, len(ids))
+	for _, id := range ids {
+		want[id] = true
+	}
+	a.mu.Lock()
+	a.previewWant = want
+	a.mu.Unlock()
+	a.maybePreview(ctx)
+}
+
+// maybePreview takes a preview of the layout on screen if the server wants one, once the layout
+// has been showing for previewDelay.
+func (a *Agent) maybePreview(ctx context.Context) {
+	a.mu.Lock()
+	id := a.playing.ID
+	if !a.previewWant[id] || a.previewBusy || a.st.Status != "ready" {
+		a.mu.Unlock()
+		return
+	}
+	a.previewBusy = true
+	a.mu.Unlock()
+	go func() {
+		ok := a.takePreview(ctx, id)
+		a.mu.Lock()
+		a.previewBusy = false
+		a.mu.Unlock()
+		if ok {
+			a.maybePreview(ctx) // the player may have moved on to another layout that needs one
+		}
+	}()
+}
+
+func (a *Agent) takePreview(ctx context.Context, id int) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(previewDelay):
+	}
+	a.mu.RLock()
+	still := a.playing.ID == id && a.previewWant[id]
+	a.mu.RUnlock()
+	if !still {
+		return true
+	}
+	a.shotMu.Lock()
+	defer a.shotMu.Unlock()
+	if err := a.captureAndUpload(ctx, fmt.Sprintf("api.php?action=preview&layout=%d", id), true); err != nil {
+		log.Printf("layout preview failed: %v", err)
+		return false
+	}
+	a.mu.Lock()
+	delete(a.previewWant, id)
+	a.mu.Unlock()
+	return true
+}
+
+// captureAndUpload posts a screenshot to the server path (relative to the server URL). With onlyPlayer
+// it leaves out the margins of the screen alignment and shows just the player area.
+func (a *Agent) captureAndUpload(ctx context.Context, path string, onlyPlayer bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
-	img, err := a.capture(ctx)
+	img, err := a.capture(ctx, onlyPlayer)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.cfg.ServerURL+"api.php?action=screenshot", bytes.NewReader(img))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.cfg.ServerURL+path, bytes.NewReader(img))
 	if err != nil {
 		return err
 	}
@@ -76,7 +139,7 @@ func (a *Agent) captureAndUpload(ctx context.Context) error {
 }
 
 // capture returns a JPEG of the player page, scaled down and turned upright for portrait layouts.
-func (a *Agent) capture(ctx context.Context) ([]byte, error) {
+func (a *Agent) capture(ctx context.Context, onlyPlayer bool) ([]byte, error) {
 	wsURL, err := a.findPlayerTarget(ctx)
 	if err != nil {
 		return nil, err
@@ -96,9 +159,23 @@ func (a *Agent) capture(ctx context.Context) ([]byte, error) {
 	if err := conn.call("Page.getLayoutMetrics", nil, &metrics); err != nil {
 		return nil, err
 	}
-	w, h := metrics.Viewport.W, metrics.Viewport.H
+	x, y, w, h := 0.0, 0.0, metrics.Viewport.W, metrics.Viewport.H
 	if w <= 0 || h <= 0 {
 		return nil, errors.New("devtools: page has no size")
+	}
+	if onlyPlayer {
+		var r struct {
+			Result struct {
+				Value []float64 `json:"value"`
+			} `json:"result"`
+		}
+		expr := `(function () { var r = document.getElementById("pp-root"); if (!r) return null;
+			var b = r.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; })()`
+		err := conn.call("Runtime.evaluate", map[string]any{"expression": expr, "returnByValue": true}, &r)
+		if v := r.Result.Value; err == nil && len(v) == 4 && v[2] >= 1 && v[3] >= 1 {
+			x, y = math.Max(0, v[0]), math.Max(0, v[1])
+			w, h = math.Min(v[2], metrics.Viewport.W-x), math.Min(v[3], metrics.Viewport.H-y)
+		}
 	}
 	scale := math.Min(1.0, maxShotEdge/math.Max(w, h))
 	var shot struct {
@@ -107,7 +184,7 @@ func (a *Agent) capture(ctx context.Context) ([]byte, error) {
 	params := map[string]any{
 		"format":  "jpeg",
 		"quality": 75,
-		"clip":    map[string]any{"x": 0, "y": 0, "width": w, "height": h, "scale": scale},
+		"clip":    map[string]any{"x": x, "y": y, "width": w, "height": h, "scale": scale},
 	}
 	if err := conn.call("Page.captureScreenshot", params, &shot); err != nil {
 		return nil, err

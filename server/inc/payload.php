@@ -172,6 +172,46 @@ function screen_payload(array $d): ?array
     return $payload;
 }
 
+/** Fingerprint of what a layout looks like: its zones and items plus the media they show. */
+function layout_preview_hash(array $layout, array $media): string
+{
+    unset($layout['name']); // renaming does not change the picture
+    $ids = [];
+    foreach ($layout['zones'] as $z) {
+        foreach ($z['items'] as $it) {
+            $ids[(string)$it['media']] = true;
+        }
+    }
+    $used = array_intersect_key($media, $ids);
+    ksort($used);
+    return sha1(json_encode([$layout, $used], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+}
+
+/** The current fingerprint of a layout (see layout_preview_hash), null when it does not exist. */
+function layout_preview_hash_of(int $layoutId): ?string
+{
+    $mediaIds = [];
+    $l = layout_data($layoutId, $mediaIds);
+    return $l ? layout_preview_hash($l, media_data(array_keys($mediaIds))) : null;
+}
+
+/** Layout ids in a screen's payload that have no preview yet, or whose preview no longer matches the layout. */
+function previews_wanted(?array $payload): array
+{
+    if (!$payload || !layout_previews_enabled()) {
+        return [];
+    }
+    $media = (array)$payload['media'];
+    $want = [];
+    foreach ($payload['layouts'] as $l) {
+        $row = q1('SELECT preview_hash FROM layouts WHERE id = ?', [$l['id']]);
+        if ($row && $row['preview_hash'] !== layout_preview_hash($l, $media)) {
+            $want[] = (int)$l['id'];
+        }
+    }
+    return $want;
+}
+
 /** What a newly registered screen starts with (Settings): [layout id|null, playlist id|null, group id|null]. */
 function new_screen_defaults(): array
 {

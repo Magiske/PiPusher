@@ -7,9 +7,10 @@
  * the secret the first time it sees the uuid (trust on first use) and requires it afterwards.
  *
  *   POST api.php?action=sync   JSON {name, hostname, client_version, config_version, registration_key, info}
- *        -> {status: pending|nolayout|ready, code, name, poll_interval, screenshot_interval, commands[], muted, version, config?}
+ *        -> {status: pending|nolayout|ready, code, name, poll_interval, screenshot_interval, commands[], muted, version, config?, previews[]}
  *   GET  api.php?action=file&media=<id>&path=<relative path>   -> raw file (approved devices only)
  *   POST api.php?action=screenshot   body: image/jpeg            -> stores the screen's latest screenshot
+ *   POST api.php?action=preview&layout=<id>   body: image/jpeg -> stores a layout's preview (layouts listed in sync "previews")
  *   GET  api.php?action=client&os=<goos>&arch=<goarch>&go=<go version>
  *        -> this server's client package for the device (header X-PiPusher-Version), for the "update" command
  */
@@ -81,6 +82,7 @@ if ($action === 'sync') {
             if (($body['config_version'] ?? '') !== $resp['version']) {
                 $resp['config'] = $payload;
             }
+            $resp['previews'] = previews_wanted($payload);
         }
     }
     json_out($resp);
@@ -117,21 +119,42 @@ if ($action === 'client') {
     send_file($d['path']);
 }
 
+/** Stores the request body (a JPEG of at most 5 MB) at $dest. */
+function save_uploaded_jpeg(string $dest): void
+{
+    $img = (string)file_get_contents('php://input', false, null, 0, 5 * 1024 * 1024 + 1);
+    if (strlen($img) > 5 * 1024 * 1024 || !str_starts_with($img, "\xFF\xD8\xFF")) {
+        json_out(['error' => 'expected a JPEG of at most 5 MB'], 400);
+    }
+    ensure_data_dirs();
+    file_put_contents($dest . '.tmp', $img);
+    rename($dest . '.tmp', $dest);
+}
+
 if ($action === 'screenshot') {
     [$uuid, $secret] = device_from_auth();
     $device = q1('SELECT * FROM devices WHERE uuid = ?', [$uuid]);
     if (!$device || !hash_equals($device['secret_hash'], hash('sha256', $secret))) {
         json_out(['error' => 'not authorised'], 403);
     }
-    $img = (string)file_get_contents('php://input', false, null, 0, 5 * 1024 * 1024 + 1);
-    if (strlen($img) > 5 * 1024 * 1024 || !str_starts_with($img, "\xFF\xD8\xFF")) {
-        json_out(['error' => 'expected a JPEG of at most 5 MB'], 400);
-    }
-    ensure_data_dirs();
-    $dest = screenshot_path((int)$device['id']);
-    file_put_contents($dest . '.tmp', $img);
-    rename($dest . '.tmp', $dest);
+    save_uploaded_jpeg(screenshot_path((int)$device['id']));
     x('UPDATE devices SET screenshot_at = ? WHERE id = ?', [now(), $device['id']]);
+    json_out(['ok' => true]);
+}
+
+if ($action === 'preview') {
+    [$uuid, $secret] = device_from_auth();
+    $device = q1('SELECT * FROM devices WHERE uuid = ?', [$uuid]);
+    if (!$device || !hash_equals($device['secret_hash'], hash('sha256', $secret)) || $device['status'] !== 'approved') {
+        json_out(['error' => 'not authorised'], 403);
+    }
+    // Only layouts this screen was asked for: what it plays, and only while a preview is wanted.
+    $layoutId = (int)($_GET['layout'] ?? 0);
+    if (!in_array($layoutId, previews_wanted(screen_payload($device)), true)) {
+        json_out(['ok' => true, 'skipped' => 'no preview wanted for this layout']);
+    }
+    save_uploaded_jpeg(layout_preview_path($layoutId));
+    x('UPDATE layouts SET preview_at = ?, preview_hash = ? WHERE id = ?', [now(), layout_preview_hash_of($layoutId), $layoutId]);
     json_out(['ok' => true]);
 }
 

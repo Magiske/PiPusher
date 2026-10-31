@@ -19,7 +19,7 @@ function db(): PDO
 
 function ensure_data_dirs(): void
 {
-    foreach ([PP_DATA, PP_MEDIA, PP_SCREENS] as $dir) {
+    foreach ([PP_DATA, PP_MEDIA, PP_SCREENS, PP_PREVIEWS] as $dir) {
         if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
             throw new RuntimeException("Cannot create data directory: $dir");
         }
@@ -214,6 +214,11 @@ function migrate(PDO $pdo): void
             )",
             'ALTER TABLE layouts ADD COLUMN folder_id INTEGER REFERENCES layout_folders(id) ON DELETE SET NULL',
             'CREATE INDEX idx_layouts_folder ON layouts(folder_id)',
+        ],
+        13 => [
+            // Layout previews: a screenshot taken by a screen the first time it plays the layout.
+            'ALTER TABLE layouts ADD COLUMN preview_at INTEGER',
+            'ALTER TABLE layouts ADD COLUMN preview_hash TEXT',
         ],
     ];
     foreach ($migrations as $v => $statements) {

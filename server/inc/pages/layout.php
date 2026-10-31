@@ -59,6 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         x('UPDATE layouts SET name = ?, orientation = ?, background = ?, folder_id = ?, updated_at = ? WHERE id = ?',
             [trim((string)$_POST['name']) ?: $layout['name'], $orientation, $bg, valid_layout_folder_id($_POST['folder_id'] ?? null), now(), $id]);
         flash('Layout settings saved.');
+    } elseif ($do === 'retake_preview') {
+        x('UPDATE layouts SET preview_hash = NULL WHERE id = ?', [$id]);
+        flash('A screen takes a new preview the next time it plays this layout.');
     } elseif ($do === 'zones') {
         $zones = json_decode((string)($_POST['zones_json'] ?? ''), true);
         if (!is_array($zones) || !$zones) {
@@ -177,6 +180,19 @@ page_header($layout['name'], 'layouts');
   </form>
   <p class="muted small">Portrait layouts are rotated by the player, so the Pi's display output can stay in its normal landscape mode.
     Used by: <?= $devices ? implode(', ', array_map(fn($d) => '<a href="' . url(['p' => 'device', 'id' => $d['id']]) . '">' . h($d['name']) . '</a>', $devices)) : 'no screens' ?>.</p>
+  <?php if (layout_previews_enabled() || $layout['preview_at']): ?>
+  <div class="row wrap align-end">
+    <?php if ($layout['preview_at']): ?>
+      <img class="layout-preview" src="screenshot.php?layout=<?= $id ?>&amp;t=<?= (int)$layout['preview_at'] ?>" alt="Preview">
+      <span class="muted small">Preview taken by a screen <?= h(date('Y-m-d H:i', (int)$layout['preview_at'])) ?>.</span>
+    <?php else: ?>
+      <span class="muted small">No preview yet: a screen takes one the first time it plays this layout.</span>
+    <?php endif; ?>
+    <?php if (layout_previews_enabled() && $layout['preview_at']): ?>
+      <?= post_button(['do' => 'retake_preview'], 'Retake preview', 'btn btn-sm') ?>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 </div>
 
 <div class="card">

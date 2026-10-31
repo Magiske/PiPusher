@@ -2,6 +2,7 @@
 /**
  * Latest screenshot of a screen (admin session):  screenshot.php?id=<device id>
  * With &meta=1 returns {"at": <unix time or null>} so the admin page can poll for a new one.
+ * Layout preview (taken by a screen):  screenshot.php?layout=<layout id>
  */
 declare(strict_types=1);
 require __DIR__ . '/inc/bootstrap.php';
@@ -11,6 +12,15 @@ if (!is_admin()) {
     exit('Administrators only');
 }
 session_write_close();
+
+if (isset($_GET['layout'])) {
+    $path = layout_preview_path((int)$_GET['layout']);
+    if (!is_file($path)) {
+        http_response_code(404);
+        exit('No preview');
+    }
+    send_file($path);
+}
 
 $device = q1('SELECT id, screenshot_at FROM devices WHERE id = ?', [(int)($_GET['id'] ?? 0)]);
 if (isset($_GET['meta'])) {

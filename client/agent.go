@@ -71,6 +71,7 @@ type syncResponse struct {
 	PollInterval int             `json:"poll_interval"`
 	ShotInterval int             `json:"screenshot_interval"`
 	Commands     []string        `json:"commands"`
+	Previews     []int           `json:"previews"` // layouts the server wants a preview screenshot of
 	Muted        bool            `json:"muted"`
 	Version      string          `json:"version"`
 	Config       json.RawMessage `json:"config"`
@@ -99,6 +100,8 @@ type Agent struct {
 	updMu        sync.Mutex    // held while a client update is in progress
 	restart      chan struct{} // closed after a client update: main exits so the new version starts
 	playing      Playing
+	previewWant  map[int]bool // layout ids still needing a preview (from the last sync)
+	previewBusy  bool
 	playerSeen   atomic.Int64 // unix nanoseconds of the player page's last /api/state request
 }
 
@@ -307,6 +310,9 @@ func (a *Agent) syncOnce(ctx context.Context) error {
 		if err := a.saveState(); err != nil {
 			log.Printf("save state: %v", err)
 		}
+	}
+	if sr.Status == "ready" {
+		a.setPreviewsWanted(ctx, sr.Previews)
 	}
 	for _, cmd := range sr.Commands {
 		a.runCommand(ctx, cmd)

@@ -147,6 +147,17 @@ function screenshot_path(int $deviceId): string
     return PP_SCREENS . '/' . $deviceId . '.jpg';
 }
 
+function layout_preview_path(int $layoutId): string
+{
+    return PP_PREVIEWS . '/' . $layoutId . '.jpg';
+}
+
+/** Settings: screens take a preview screenshot of a layout the first time they play it (and after it changes). */
+function layout_previews_enabled(): bool
+{
+    return setting('layout_previews', '1') === '1';
+}
+
 /** Screenshot interval in seconds (0 = only on demand). Stored in minutes. */
 function screenshot_interval(): int
 {

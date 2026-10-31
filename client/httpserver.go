@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"io/fs"
@@ -52,6 +53,7 @@ func (a *Agent) Routes() http.Handler {
 		a.mu.Lock()
 		a.playing = p
 		a.mu.Unlock()
+		a.maybePreview(context.Background())
 		writeJSON(w, map[string]any{"ok": true})
 	})))
 	mux.Handle("/media/", onlyMethod("GET", http.HandlerFunc(a.serveMedia)))

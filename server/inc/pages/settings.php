@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dg = (int)($_POST['default_group'] ?? 0);
         set_setting('default_group', isset(screen_groups()[$dg]) ? (string)$dg : '');
         set_setting('screenshot_interval', (string)max(0, min(1440, (int)$_POST['screenshot_interval'])));
+        set_setting('layout_previews', isset($_POST['layout_previews']) ? '1' : '0');
         $key = trim((string)($_POST['registration_key'] ?? ''));
         set_setting('registration_key', preg_replace('/[^A-Za-z0-9_-]/', '', $key));
         flash('Settings saved.');
@@ -45,6 +46,11 @@ page_header('Settings', 'settings');
       <label>Screenshot every (minutes)
         <input type="number" name="screenshot_interval" min="0" max="1440" value="<?= h(setting('screenshot_interval', '10')) ?>">
         <span class="muted small">0 = only when you click "Take screenshot" on a screen.</span></label>
+      <div>
+        <label class="check"><input type="checkbox" name="layout_previews" value="1"<?= layout_previews_enabled() ? ' checked' : '' ?>> Layout previews</label>
+        <span class="muted small">The first time a screen plays a layout (and again after the layout changes) it takes a screenshot,
+          shown as the layout's preview under Layouts. Needs screen client 1.14.0 or newer.</span>
+      </div>
       <label>New screens join group <select name="default_group"><?= select_options(['' => '— no group —'] + array_map(fn($g) => $g['name'], screen_groups()), setting('default_group', '')) ?></select>
         <span class="muted small">They follow the group's content.</span></label>
       <label>New screens without a group show <select name="default_content"><?= content_options($defLayout, $defPlaylist, '— nothing (assign manually) —') ?></select></label>

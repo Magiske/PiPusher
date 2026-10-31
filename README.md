@@ -40,6 +40,8 @@ Remote commands from the admin panel: **reload player**, **sync now**, **reboot*
 
 **Screenshots**: each screen uploads a screenshot every *N* minutes (Settings, default 10; 0 = on demand only). The **Take screenshot now** button on a screen's page requests one immediately, and the page updates by itself when it arrives. Thumbnails appear in the Screens list. The agent captures the page through the kiosk Chromium's DevTools port, which listens on `127.0.0.1:9222` only. Portrait captures are rotated back upright and scaled to at most 1280 px.
 
+**Layout previews** (Settings, on by default): the first time a screen plays a layout, it waits a few seconds and takes a screenshot of the player area. That picture becomes the layout's preview on the Layouts page and on the layout's own page. When the layout's zones, items or media change, the next screen that plays it takes a new one. A rename does not. **Retake preview** on the layout page asks for a fresh picture. Web screens cannot take previews. Pi and Windows screens need client 1.14.0 or newer (use the *Update client* command).
+
 ## Building (Windows)
 
 ```powershell
@@ -229,9 +231,10 @@ Keep the links private, because anyone with a link can see that screen's content
 
 All device requests send `X-Device-Auth: <uuid>:<secret>`. The device generates both on first start. The server stores a hash of the secret the first time it sees the device and requires it after that.
 
-- `POST api.php?action=sync`: heartbeat and status. Returns `status` (`pending` / `nolayout` / `ready`), `version`, and the full `config` only when the version changed, plus a pending `command`.
+- `POST api.php?action=sync`: heartbeat and status. Returns `status` (`pending` / `nolayout` / `ready`), `version`, and the full `config` only when the version changed, plus a pending `command` and `previews` (layout ids that need a preview screenshot).
 - `GET api.php?action=file&media=<id>&path=<path>`: downloads one media file (approved screens only).
 - `POST api.php?action=screenshot` (body: JPEG, max 5 MB): stores the screen's latest screenshot.
+- `POST api.php?action=preview&layout=<id>` (body: JPEG, max 5 MB): stores a layout preview. Only accepted for layouts listed in the sync response's `previews`.
 - `GET api.php?action=client&os=<goos>&arch=<goarch>&go=<go version>`: the server's client package for this screen, with an `X-PiPusher-Version` header. Used by the `update` command (approved screens only).
 
 ## Project layout
