@@ -163,7 +163,8 @@ dl.kv dd { margin: 0; word-break: break-word; }
 
 .zone-editor { display: grid; grid-template-columns: minmax(300px, 1fr) auto; gap: 1.2rem; align-items: start; }
 @media (max-width: 1000px) { .zone-editor { grid-template-columns: 1fr; } }
-.zone-stage { position: relative; aspect-ratio: 16/9; width: 100%; border-radius: 6px; overflow: hidden; user-select: none; touch-action: none;
+/* isolation keeps the zone boxes' z-index (their layers) inside the stage, under the sticky top bar. */
+.zone-stage { position: relative; isolation: isolate; aspect-ratio: 16/9; width: 100%; border-radius: 6px; overflow: hidden; user-select: none; touch-action: none;
   background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
   background-size: 5% 5%; }
 /* Sized by width (never wider than its column, so it cannot run into the zone table), 9:16 at most 60% of the window high. */
