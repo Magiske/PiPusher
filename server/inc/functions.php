@@ -175,6 +175,17 @@ function device_online(array $device): bool
     return $device['last_seen'] && (now() - (int)$device['last_seen']) <= poll_interval() * 3 + 15;
 }
 
+/** Largest upload PHP accepts in bytes: the smaller of upload_max_filesize and post_max_size (0 = no limit). */
+function min_ini_bytes(): int
+{
+    $bytes = function (string $v): int {
+        $n = (int)$v;
+        return match (strtolower(substr(trim($v), -1))) { 'g' => $n << 30, 'm' => $n << 20, 'k' => $n << 10, default => $n };
+    };
+    $limits = array_filter([$bytes((string)ini_get('upload_max_filesize')), $bytes((string)ini_get('post_max_size'))]);
+    return $limits ? min($limits) : 0;
+}
+
 function human_size(int $bytes): string
 {
     $units = ['B', 'KB', 'MB', 'GB'];

@@ -50,6 +50,11 @@ if (!q1('SELECT id FROM users LIMIT 1')) {
     }
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // PHP drops the whole form (token included) when it exceeds post_max_size: say so instead of "invalid token".
+    if (!$_POST && !$_FILES && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        flash('The upload is too large for this server (PHP post_max_size is ' . ini_get('post_max_size') . ').', 'error');
+        redirect(url(['p' => $p]));
+    }
     csrf_check();
 }
 

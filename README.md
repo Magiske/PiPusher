@@ -107,6 +107,16 @@ Each user can turn on two-factor authentication (2FA) under their account (👤)
 - A login waits at most 5 minutes and allows 5 tries for the code. After that, the password has to be entered again.
 - The server's clock must be correct, because codes depend on the time.
 
+### Backup and restore
+
+*Settings → Backup and restore* (administrators):
+
+- **Download backup** gives one zip with everything: the database (settings, users, screens, groups, layouts, playlists, schedules) as a consistent snapshot, all media and the layout previews. Screenshots are left out because screens send new ones. The PHP `zip` extension is required.
+- **Restore backup** uploads such a zip and replaces all data on the server with it. You then log in again with an account from the backup. The zip is checked first: it must be a PiPusher backup, not made by a newer server version, have a readable database and contain only expected files. If anything is wrong, nothing is changed. A backup from an older version is migrated automatically.
+- The data that was replaced is kept in `data/before-restore/` until the next restore. Delete it to free the space.
+- The upload is limited by PHP's `upload_max_filesize` and `post_max_size`, and the Settings card shows the limit. For a large media library, raise both limits in `php.ini` or `.user.ini`.
+- Screens keep working after a restore when the new server has the same address, because they authenticate with the device keys stored in the database. Use this to move PiPusher to another host.
+
 ## Raspberry Pi installation
 
 Raspberry Pi OS Bookworm or newer, **desktop** edition. Pi 3, 4, 5 and Zero 2 W are supported (armv6 Pi 1/Zero are not).
@@ -249,6 +259,7 @@ server/            PHP application (upload this)
   assets/qrcode.js   QR code generator for 2FA setup (qrcode-generator 1.4.4, MIT, Kazuhiko Arase)
   play.php           online web player (web screens, no login)
   download.php       client packages from downloads/ (admin session or registration key)
+  backup.php         backup zip download (admin); restore is on the Settings page (inc/backup.php)
   assets/player/     player.js/css: shared with the client (source of truth)
 client/            Go agent (stdlib only)
   web/               embedded player page (player.js/css copied by build.ps1)

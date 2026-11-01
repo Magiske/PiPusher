@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function db(): PDO
 {
-    static $pdo = null;
+    $pdo = &$GLOBALS['pp_pdo']; // shared with db_close()
     if ($pdo instanceof PDO) {
         return $pdo;
     }
@@ -15,6 +15,12 @@ function db(): PDO
     $pdo->exec('PRAGMA busy_timeout = 5000');
     migrate($pdo);
     return $pdo;
+}
+
+/** Closes the database connection (a restore replaces the file; Windows cannot rename an open file). */
+function db_close(): void
+{
+    $GLOBALS['pp_pdo'] = null;
 }
 
 function ensure_data_dirs(): void

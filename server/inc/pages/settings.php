@@ -21,6 +21,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_setting('require_mfa', in_array($req, ['admins', 'all'], true) ? $req : '');
         set_setting('site_name', mb_substr(trim(str_replace(':', '', (string)($_POST['site_name'] ?? ''))), 0, 60));
         flash('Settings saved.' . ($req !== '' ? ' Users without two-factor authentication must set it up before they can continue.' : ''));
+    } elseif ($do === 'restore') {
+        require_once PP_ROOT . '/inc/backup.php';
+        $f = $_FILES['backup'] ?? null;
+        if (!$f || $f['error'] !== UPLOAD_ERR_OK) {
+            flash(in_array($f['error'] ?? null, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+                ? 'The backup is larger than this server accepts (PHP upload_max_filesize is ' . ini_get('upload_max_filesize') . ').'
+                : 'Choose a backup zip to restore.', 'error');
+        } else {
+            try {
+                $r = backup_restore($f['tmp_name']);
+                // The accounts now come from the backup: log in again.
+                unset($_SESSION['user_id'], $_SESSION['mfa_pending']);
+                session_regenerate_id(true);
+                flash(sprintf('Backup from %s (PiPusher %s) restored: %d layout(s), %d playlist(s), %d screen(s), %d media item(s), %d user(s). Log in with an account from the backup.',
+                    $r['created_at'] ? date('Y-m-d H:i', $r['created_at']) : 'unknown date', $r['version'],
+                    $r['layouts'], $r['playlists'], $r['devices'], $r['media'], $r['users']));
+                redirect(url(['p' => 'login']));
+            } catch (RuntimeException $e) {
+                flash('Restore failed, nothing was changed: ' . $e->getMessage(), 'error');
+            }
+        }
     } elseif ($do === 'web_key') {
         set_setting('web_key', ($_POST['enable'] ?? '') === '1' ? random_token(12) : '');
         flash(($_POST['enable'] ?? '') === '1'
@@ -157,6 +178,28 @@ powershell -ExecutionPolicy Bypass -File "$env:TEMP\pipusher\pipusher-client-win
     <?php endif; ?>
     <p class="muted small">Keep the link private. Web screens need the network all the time (no offline cache) and cannot take
       screenshots or reboot. Changing or turning off the link does not affect existing web screens; remove them under Screens.</p>
+  </div>
+
+  <div class="card">
+    <h2>💾 Backup and restore</h2>
+    <?php $backupSize = (int)(q1('SELECT SUM(size) AS s FROM media')['s'] ?? 0) + (int)@filesize(PP_DATA . '/pipusher.sqlite'); ?>
+    <p>A backup is one zip file with everything: settings, users, screens, groups, layouts, playlists, media and layout previews
+      (about <?= h(human_size($backupSize)) ?>).</p>
+    <form method="post" action="backup.php">
+      <?= csrf_field() ?><button class="btn btn-primary"<?= class_exists('ZipArchive') ? '' : ' disabled' ?>>⬇ Download backup</button>
+    </form>
+    <h3>Restore</h3>
+    <form method="post" enctype="multipart/form-data" class="stack"
+          data-confirm="Restore this backup? Everything on this server (settings, users, screens, layouts, playlists, media) is replaced by the backup, and you have to log in again.">
+      <?= csrf_field() ?><input type="hidden" name="do" value="restore">
+      <input type="file" name="backup" accept=".zip,application/zip" required>
+      <button class="btn btn-danger"<?= class_exists('ZipArchive') ? '' : ' disabled' ?>>Restore backup</button>
+    </form>
+    <p class="muted small">Restoring replaces all data on this server with the backup. The current data is kept in
+      <code>data/before-restore/</code> (until the next restore). Screens keep working when the backup is from this server or the
+      new server has the same address. Largest upload this server accepts:
+      <?= h(min_ini_bytes() ? human_size(min_ini_bytes()) : 'unlimited') ?> (PHP upload_max_filesize / post_max_size).
+      <?= class_exists('ZipArchive') ? '' : '<strong>The PHP zip extension is missing, so backups are not available.</strong>' ?></p>
   </div>
 
   <div class="card">
