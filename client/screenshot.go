@@ -48,8 +48,9 @@ func (a *Agent) takeScreenshot(ctx context.Context) {
 	a.mu.Unlock()
 }
 
-// previewDelay gives a layout that just came on screen time to fade in and load its media.
-const previewDelay = 8 * time.Second
+// defaultPreviewDelay gives a layout that just came on screen time to fade in and load its media,
+// until the server sends the delay set under Settings.
+const defaultPreviewDelay = 8 * time.Second
 
 // setPreviewsWanted records the layouts the server wants a preview of (Settings: layout previews).
 func (a *Agent) setPreviewsWanted(ctx context.Context, ids []int) {
@@ -64,7 +65,7 @@ func (a *Agent) setPreviewsWanted(ctx context.Context, ids []int) {
 }
 
 // maybePreview takes a preview of the layout on screen if the server wants one, once the layout
-// has been showing for previewDelay.
+// has been showing for the preview delay.
 func (a *Agent) maybePreview(ctx context.Context) {
 	a.mu.Lock()
 	id := a.playing.ID
@@ -86,10 +87,16 @@ func (a *Agent) maybePreview(ctx context.Context) {
 }
 
 func (a *Agent) takePreview(ctx context.Context, id int) bool {
+	a.mu.RLock()
+	delay := a.previewDelay
+	a.mu.RUnlock()
+	if delay <= 0 {
+		delay = defaultPreviewDelay
+	}
 	select {
 	case <-ctx.Done():
 		return false
-	case <-time.After(previewDelay):
+	case <-time.After(delay):
 	}
 	a.mu.RLock()
 	still := a.playing.ID == id && a.previewWant[id]

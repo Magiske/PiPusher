@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_setting('default_group', isset(screen_groups()[$dg]) ? (string)$dg : '');
         set_setting('screenshot_interval', (string)max(0, min(1440, (int)$_POST['screenshot_interval'])));
         set_setting('layout_previews', isset($_POST['layout_previews']) ? '1' : '0');
+        set_setting('layout_preview_delay', (string)max(1, min(600, (int)($_POST['layout_preview_delay'] ?? 8))));
         $key = trim((string)($_POST['registration_key'] ?? ''));
         set_setting('registration_key', preg_replace('/[^A-Za-z0-9_-]/', '', $key));
         flash('Settings saved.');
@@ -51,6 +52,10 @@ page_header('Settings', 'settings');
         <span class="muted small">The first time a screen plays a layout (and again after the layout changes) it takes a screenshot,
           shown as the layout's preview under Layouts. Needs screen client 1.14.0 or newer.</span>
       </div>
+      <label>Layout preview after (seconds)
+        <input type="number" name="layout_preview_delay" min="1" max="600" value="<?= layout_preview_delay() ?>">
+        <span class="muted small">How long a layout is on screen before its preview is taken, so pictures, videos and pages have loaded.
+          A layout shown for less time is captured the next time it plays longer. Needs screen client 1.14.2 or newer (older ones wait 8 s).</span></label>
       <label>New screens join group <select name="default_group"><?= select_options(['' => '— no group —'] + array_map(fn($g) => $g['name'], screen_groups()), setting('default_group', '')) ?></select>
         <span class="muted small">They follow the group's content.</span></label>
       <label>New screens without a group show <select name="default_content"><?= content_options($defLayout, $defPlaylist, '— nothing (assign manually) —') ?></select></label>

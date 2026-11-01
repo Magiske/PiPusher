@@ -7,7 +7,7 @@
  * the secret the first time it sees the uuid (trust on first use) and requires it afterwards.
  *
  *   POST api.php?action=sync   JSON {name, hostname, client_version, config_version, registration_key, info}
- *        -> {status: pending|nolayout|ready, code, name, poll_interval, screenshot_interval, commands[], muted, version, config?, previews[]}
+ *        -> {status: pending|nolayout|ready, code, name, poll_interval, screenshot_interval, commands[], muted, version, config?, previews[], preview_delay}
  *   GET  api.php?action=file&media=<id>&path=<relative path>   -> raw file (approved devices only)
  *   POST api.php?action=screenshot   body: image/jpeg            -> stores the screen's latest screenshot
  *   POST api.php?action=preview&layout=<id>   body: image/jpeg -> stores a layout's preview (layouts listed in sync "previews")
@@ -83,6 +83,7 @@ if ($action === 'sync') {
                 $resp['config'] = $payload;
             }
             $resp['previews'] = previews_wanted($payload);
+            $resp['preview_delay'] = layout_preview_delay();
         }
     }
     json_out($resp);

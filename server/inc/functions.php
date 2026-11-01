@@ -158,6 +158,12 @@ function layout_previews_enabled(): bool
     return setting('layout_previews', '1') === '1';
 }
 
+/** Seconds a layout must be on screen before its preview is taken (Settings), so it can load. */
+function layout_preview_delay(): int
+{
+    return max(1, min(600, (int)setting('layout_preview_delay', '8')));
+}
+
 /** Screenshot interval in seconds (0 = only on demand). Stored in minutes. */
 function screenshot_interval(): int
 {

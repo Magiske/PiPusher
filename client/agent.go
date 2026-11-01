@@ -72,6 +72,7 @@ type syncResponse struct {
 	ShotInterval int             `json:"screenshot_interval"`
 	Commands     []string        `json:"commands"`
 	Previews     []int           `json:"previews"` // layouts the server wants a preview screenshot of
+	PreviewDelay int             `json:"preview_delay"`
 	Muted        bool            `json:"muted"`
 	Version      string          `json:"version"`
 	Config       json.RawMessage `json:"config"`
@@ -102,7 +103,8 @@ type Agent struct {
 	playing      Playing
 	previewWant  map[int]bool // layout ids still needing a preview (from the last sync)
 	previewBusy  bool
-	playerSeen   atomic.Int64 // unix nanoseconds of the player page's last /api/state request
+	previewDelay time.Duration // how long a layout is on screen before its preview is taken (Settings)
+	playerSeen   atomic.Int64  // unix nanoseconds of the player page's last /api/state request
 }
 
 func NewAgent(cfg Config) (*Agent, error) {
@@ -276,6 +278,9 @@ func (a *Agent) syncOnce(ctx context.Context) error {
 		a.interval = time.Duration(maxInt(10, sr.PollInterval)) * time.Second
 	}
 	a.shotInterval = time.Duration(maxInt(0, sr.ShotInterval)) * time.Second
+	if sr.PreviewDelay > 0 {
+		a.previewDelay = time.Duration(sr.PreviewDelay) * time.Second
+	}
 	changed := a.st.Code != sr.Code || a.st.Name != sr.Name || a.st.Muted != sr.Muted
 	a.st.Muted = sr.Muted
 	a.st.Code, a.st.Name = sr.Code, sr.Name
