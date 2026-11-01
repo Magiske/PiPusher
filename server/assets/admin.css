@@ -169,13 +169,16 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .zone-stage.portrait { aspect-ratio: 9/16; width: auto; height: 70vh; margin: 0 auto; }
 .zone-box { position: absolute; border: 2px solid rgba(255,255,255,.75); background: rgba(76,134,245,.35); color: #fff; cursor: move;
   display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 600; text-shadow: 0 1px 2px #000; overflow: hidden; }
-.zone-box.selected { border-color: #ffd166; background: rgba(255,209,102,.3); z-index: 999 !important; }
+.zone-box.selected { border-color: #ffd166; background: rgba(255,209,102,.3); }
 .zone-box .handle { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; background: #fff; cursor: nwse-resize; border-top-left-radius: 4px; }
 #zone-rows tr.selected td { background: rgba(255,209,102,.15); }
 .zone-table [data-k="name"] { min-width: 14rem; }
 .zone-table [data-k="fit"] { min-width: 9rem; }
 .zone-table [data-k="transition"] { min-width: 7rem; }
 .zone-table input[type=number] { width: 4.5rem; min-width: 4.5rem; }
+.zone-table .zone-layer { white-space: nowrap; }
+.zone-table .zone-layer .btn { padding-left: .4rem; padding-right: .4rem; }
+.zone-table .zone-layer span { margin-left: .3rem; }
 
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
 .media-card { margin: 0; padding: .7rem; display: flex; flex-direction: column; gap: .5rem; }

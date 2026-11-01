@@ -189,9 +189,29 @@
     });
   }
 
+  // Zone indexes from the bottom layer to the top one.
+  function stackOrder() {
+    return zones.map(function (z, i) { return i; })
+      .sort(function (a, b) { return (zones[a].z || 0) - (zones[b].z || 0) || a - b; });
+  }
+
+  // Moves a zone one layer up (dir 1) or down (dir -1) and renumbers the layers 0..n-1.
+  function moveLayer(i, dir) {
+    var order = stackOrder();
+    var pos = order.indexOf(i);
+    if (pos + dir < 0 || pos + dir >= order.length) return;
+    order.splice(pos, 1);
+    order.splice(pos + dir, 0, i);
+    order.forEach(function (j, k) { zones[j].z = k; });
+    dirty = true;
+    renderAll();
+  }
+
   function renderRows() {
     rows.innerHTML = '';
+    var order = stackOrder();
     zones.forEach(function (z, i) {
+      var pos = order.indexOf(i);
       var tr = document.createElement('tr');
       if (i === selected) tr.className = 'selected';
       tr.innerHTML =
@@ -199,10 +219,14 @@
         ['x', 'y', 'w', 'h'].map(function (k) {
           return '<td><input data-k="' + k + '" type="number" step="0.5" min="0" max="100" value="' + z[k] + '"></td>';
         }).join('') +
-        '<td><input data-k="z" type="number" step="1" value="' + (z.z || 0) + '"></td>' +
+        '<td class="zone-layer"><button type="button" class="btn btn-sm" data-layer="1" title="Bring forward: on top of the zone above"' +
+          (pos === order.length - 1 ? ' disabled' : '') + '>▲</button>' +
+        '<button type="button" class="btn btn-sm" data-layer="-1" title="Send backward: under the zone below"' +
+          (pos === 0 ? ' disabled' : '') + '>▼</button>' +
+        '<span class="muted small" title="1 = bottom, ' + order.length + ' = top">' + (pos + 1) + '</span></td>' +
         '<td><select data-k="fit">' + options(cfg.fits, z.fit || 'contain') + '</select></td>' +
         '<td><select data-k="transition">' + options(cfg.transitions, z.transition || 'fade') + '</select></td>' +
-        '<td><button type="button" class="btn btn-sm btn-danger" title="Remove zone">✕</button></td>';
+        '<td><button type="button" class="btn btn-sm btn-danger zone-remove" title="Remove zone">✕</button></td>';
       tr.addEventListener('focusin', function () { select(i, false); });
       tr.querySelectorAll('[data-k]').forEach(function (inp) {
         inp.addEventListener('input', function () {
@@ -213,7 +237,13 @@
           renderStage();
         });
       });
-      tr.querySelector('button').addEventListener('click', function () {
+      tr.querySelectorAll('[data-layer]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          selected = i;
+          moveLayer(i, Number(btn.getAttribute('data-layer')));
+        });
+      });
+      tr.querySelector('.zone-remove').addEventListener('click', function () {
         if (zones.length === 1) { alert('A layout needs at least one zone.'); return; }
         zones.splice(i, 1);
         selected = 0;
