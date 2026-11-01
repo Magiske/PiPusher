@@ -49,8 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($do === 'settings') {
         $fb = (int)($_POST['fallback_layout_id'] ?? 0);
-        x('UPDATE playlists SET name = ?, fallback_layout_id = ?, updated_at = ? WHERE id = ?',
-            [trim((string)$_POST['name']) ?: $playlist['name'], $layoutOk($fb) ? $fb : null, now(), $id]);
+        x('UPDATE playlists SET name = ?, fallback_layout_id = ?, folder_id = ?, updated_at = ? WHERE id = ?',
+            [trim((string)$_POST['name']) ?: $playlist['name'], $layoutOk($fb) ? $fb : null,
+             valid_playlist_folder_id($_POST['folder_id'] ?? null), now(), $id]);
         flash('Playlist saved.');
     } elseif ($do === 'add' && $layoutOk((int)$_POST['layout_id'])) {
         $f = entry_fields();
@@ -117,7 +118,10 @@ function entry_form_fields(array $e, array $layouts): string
 page_header($playlist['name'], 'playlists');
 ?>
 <div class="page-head">
-  <h1>▶ <?= h($playlist['name']) ?></h1>
+  <h1 class="crumbs"><a href="<?= url(['p' => 'playlists']) ?>">Playlists</a> <span class="muted">/</span>
+    <?php if ($playlist['folder_id'] && isset(playlist_folders()[(int)$playlist['folder_id']])): ?>
+      <a href="<?= url(['p' => 'playlists', 'folder' => (int)$playlist['folder_id']]) ?>">📁 <?= h(playlist_folders()[(int)$playlist['folder_id']]['name']) ?></a> <span class="muted">/</span>
+    <?php endif; ?>▶ <?= h($playlist['name']) ?></h1>
   <a class="btn btn-primary" target="_blank" href="preview.php?playlist=<?= $id ?>">Preview ↗</a>
 </div>
 
@@ -128,6 +132,7 @@ page_header($playlist['name'], 'playlists');
     <label>Name <input name="name" value="<?= h($playlist['name']) ?>" required></label>
     <label>When nothing is scheduled, show
       <select name="fallback_layout_id"><?= layout_options($playlist['fallback_layout_id'] ?? '', '— a blank screen —') ?></select></label>
+    <label>Folder <select name="folder_id"><?= playlist_folder_options($playlist['folder_id'] ? (int)$playlist['folder_id'] : null) ?></select></label>
     <button class="btn">Save</button>
   </form>
   <p class="muted small">Screens using this playlist:

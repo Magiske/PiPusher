@@ -220,6 +220,16 @@ function migrate(PDO $pdo): void
             'ALTER TABLE layouts ADD COLUMN preview_at INTEGER',
             'ALTER TABLE layouts ADD COLUMN preview_hash TEXT',
         ],
+        14 => [
+            // Folders (one level) to organise playlists.
+            "CREATE TABLE playlist_folders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            )",
+            'ALTER TABLE playlists ADD COLUMN folder_id INTEGER REFERENCES playlist_folders(id) ON DELETE SET NULL',
+            'CREATE INDEX idx_playlists_folder ON playlists(folder_id)',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

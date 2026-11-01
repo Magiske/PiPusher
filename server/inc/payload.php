@@ -286,10 +286,9 @@ function parse_content_ref(?string $ref): array
 function content_options(?int $layoutId, ?int $playlistId, string $noneLabel = '— nothing —'): string
 {
     $out = '<option value="">' . h($noneLabel) . '</option>';
-    $pls = q('SELECT id, name FROM playlists ORDER BY name COLLATE NOCASE');
-    if ($pls) {
-        $out .= '<optgroup label="Playlists">';
-        foreach ($pls as $p) {
+    foreach (playlists_by_folder() as $fid => $list) {
+        $out .= '<optgroup label="' . h($fid ? 'Playlists · 📁 ' . playlist_folders()[$fid]['name'] : 'Playlists') . '">';
+        foreach ($list as $p) {
             $out .= '<option value="playlist:' . $p['id'] . '"' . ($playlistId === (int)$p['id'] ? ' selected' : '') . '>▶ ' . h($p['name']) . '</option>';
         }
         $out .= '</optgroup>';
@@ -354,6 +353,43 @@ function layout_options($selected, ?string $none = null): string
 function layout_folder_options(?int $selected): string
 {
     return select_options(['' => 'Layouts (top level)'] + array_map(fn($f) => '📁 ' . $f['name'], layout_folders()), $selected ?? '');
+}
+
+// ---------------------------------------------------------------- playlist folders
+
+/** All playlist folders keyed by id, sorted by name. */
+function playlist_folders(): array
+{
+    static $folders = null;
+    if ($folders === null) {
+        $folders = [];
+        foreach (q('SELECT * FROM playlist_folders ORDER BY name COLLATE NOCASE') as $f) {
+            $folders[(int)$f['id']] = $f;
+        }
+    }
+    return $folders;
+}
+
+function valid_playlist_folder_id($value): ?int
+{
+    $id = (int)$value;
+    return $id && isset(playlist_folders()[$id]) ? $id : null;
+}
+
+/** Playlists grouped by folder: [0 => top-level playlists, folder id => playlists, ...] in folder name order, empty groups left out. */
+function playlists_by_folder(): array
+{
+    $groups = [0 => []] + array_fill_keys(array_keys(playlist_folders()), []);
+    foreach (q('SELECT id, name, folder_id FROM playlists ORDER BY name COLLATE NOCASE') as $p) {
+        $groups[isset($groups[(int)$p['folder_id']]) ? (int)$p['folder_id'] : 0][] = $p;
+    }
+    return array_filter($groups);
+}
+
+/** <option>s for picking a playlist folder ("" = top level). */
+function playlist_folder_options(?int $selected): string
+{
+    return select_options(['' => 'Playlists (top level)'] + array_map(fn($f) => '📁 ' . $f['name'], playlist_folders()), $selected ?? '');
 }
 
 /** Human summary of a playlist entry's rules, e.g. "Mon–Fri · 08:00–17:00 · 01 Dec – 31 Dec yearly". */
