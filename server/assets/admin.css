@@ -166,7 +166,8 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .zone-stage { position: relative; aspect-ratio: 16/9; width: 100%; border-radius: 6px; overflow: hidden; user-select: none; touch-action: none;
   background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
   background-size: 5% 5%; }
-.zone-stage.portrait { aspect-ratio: 9/16; width: auto; height: 70vh; margin: 0 auto; }
+/* Sized by width (never wider than its column, so it cannot run into the zone table), 9:16 at most 60% of the window high. */
+.zone-stage.portrait { aspect-ratio: 9/16; width: min(100%, calc(60vh * 9 / 16)); margin: 0 auto; }
 .zone-box { position: absolute; border: 2px solid rgba(255,255,255,.75); background: rgba(76,134,245,.35); color: #fff; cursor: move;
   display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 600; text-shadow: 0 1px 2px #000; overflow: hidden; }
 .zone-box.selected { border-color: #ffd166; background: rgba(255,209,102,.3); }
