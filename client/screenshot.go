@@ -121,7 +121,7 @@ func (a *Agent) takePreview(ctx context.Context, id int) bool {
 func (a *Agent) captureAndUpload(ctx context.Context, path string, onlyPlayer bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
-	img, err := a.capture(ctx, onlyPlayer)
+	img, err := a.capture(ctx, onlyPlayer, nil)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (a *Agent) captureAndUpload(ctx context.Context, path string, onlyPlayer bo
 }
 
 // capture returns a JPEG of the player page, scaled down and turned upright for portrait layouts.
-func (a *Agent) capture(ctx context.Context, onlyPlayer bool) ([]byte, error) {
+func (a *Agent) capture(ctx context.Context, onlyPlayer bool, area []float64) ([]byte, error) {
 	wsURL, err := a.findPlayerTarget(ctx)
 	if err != nil {
 		return nil, err
@@ -182,6 +182,15 @@ func (a *Agent) capture(ctx context.Context, onlyPlayer bool) ([]byte, error) {
 		if v := r.Result.Value; err == nil && len(v) == 4 && v[2] >= 1 && v[3] >= 1 {
 			x, y = math.Max(0, v[0]), math.Max(0, v[1])
 			w, h = math.Min(v[2], metrics.Viewport.W-x), math.Min(v[3], metrics.Viewport.H-y)
+		}
+	}
+	if len(area) == 4 {
+		// An element of the page (x, y, w, h in CSS pixels), kept inside the viewport.
+		x, y = math.Max(0, area[0]), math.Max(0, area[1])
+		w = math.Min(area[0]+area[2], metrics.Viewport.W) - x
+		h = math.Min(area[1]+area[3], metrics.Viewport.H) - y
+		if w < 1 || h < 1 {
+			return nil, errors.New("area is outside the screen")
 		}
 	}
 	scale := math.Min(1.0, maxShotEdge/math.Max(w, h))

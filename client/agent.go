@@ -183,6 +183,11 @@ func writeJSONAtomic(path string, v any, mode os.FileMode) error {
 	if err != nil {
 		return err
 	}
+	return writeFileAtomic(path, b, mode)
+}
+
+// writeFileAtomic writes a temporary file and renames it, so readers never see a half-written file.
+func writeFileAtomic(path string, b []byte, mode os.FileMode) error {
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, b, mode); err != nil {
 		return err
@@ -346,6 +351,7 @@ func (a *Agent) activate(ctx context.Context, version string, config json.RawMes
 		return err
 	}
 	a.cache.GC(p.Media)
+	a.gcSnapshots(config)
 	log.Printf("content version %.10s is now playing", version)
 	return nil
 }
@@ -400,19 +406,20 @@ func (a *Agent) runCommand(ctx context.Context, cmd string) {
 
 // PlayerState is what the local player page polls.
 type PlayerState struct {
-	State        string          `json:"state"` // ready, pending, nolayout, waiting
-	Code         string          `json:"code,omitempty"`
-	Name         string          `json:"name,omitempty"`
-	Online       bool            `json:"online"`
-	Version      string          `json:"version,omitempty"`
-	Reload       int             `json:"reload"`
-	Muted        bool            `json:"muted"`
-	Server       string          `json:"server,omitempty"`
-	IP           string          `json:"ip,omitempty"`
-	AgentVersion string          `json:"agent_version"`
-	Message      string          `json:"message,omitempty"`
-	LastSync     *time.Time      `json:"last_sync,omitempty"`
-	Config       json.RawMessage `json:"config,omitempty"`
+	State        string           `json:"state"` // ready, pending, nolayout, waiting
+	Code         string           `json:"code,omitempty"`
+	Name         string           `json:"name,omitempty"`
+	Online       bool             `json:"online"`
+	Version      string           `json:"version,omitempty"`
+	Reload       int              `json:"reload"`
+	Muted        bool             `json:"muted"`
+	Server       string           `json:"server,omitempty"`
+	IP           string           `json:"ip,omitempty"`
+	AgentVersion string           `json:"agent_version"`
+	Message      string           `json:"message,omitempty"`
+	LastSync     *time.Time       `json:"last_sync,omitempty"`
+	Config       json.RawMessage  `json:"config,omitempty"`
+	Snapshots    map[string]int64 `json:"snapshots"` // URL media id -> time of its offline snapshot
 }
 
 func (a *Agent) online() bool {
@@ -431,6 +438,7 @@ func (a *Agent) PlayerState() PlayerState {
 		Server:       a.cfg.ServerURL,
 		IP:           localIP(),
 		AgentVersion: version,
+		Snapshots:    a.snapshots(),
 	}
 	if !a.lastOK.IsZero() {
 		t := a.lastOK

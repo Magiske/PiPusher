@@ -147,6 +147,7 @@
   function apply(s) {
     if (opts.mode !== 'static') setMuted(s.muted);
     ctx.online = !!s.online;
+    ctx.snapshots = s.snapshots || {};
     ctx.version = s.state === 'ready' ? s.version || null : null;
     var key = s.state + '|' + (s.version || '') + '|' + (s.reload || 0);
     if (s.state !== 'ready') key += '|' + [s.code, s.name, s.message, s.ip].join('|');
@@ -440,8 +441,37 @@
     return box;
   }
 
+  // Offline picture of an external page (URL media), taken by the local agent while online. Device mode only.
+  function hasSnapshot(m) {
+    return opts.mode === 'device' && m.type === 'url' && !!(ctx.snapshots || {})[m.id];
+  }
+
+  // Asks the agent to photograph the zone showing an external page once it has loaded (the agent keeps at most
+  // one per page per 10 minutes). The zone must still show the page, uncovered by a transition.
+  function requestSnapshot(zone, node, m, delay) {
+    if (opts.mode !== 'device' || !ctx.online) return;
+    setTimeout(function () {
+      if (zone.stopped || zone.cur !== node || !ctx.online || !node.isConnected) return;
+      var r = node.getBoundingClientRect();
+      if (r.width < 10 || r.height < 10) return;
+      fetch('/api/snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ media: m.id, area: [r.left, r.top, r.width, r.height] })
+      }).catch(function () {});
+    }, delay);
+  }
+
   function makeNode(m, zc, it) {
     var node;
+    if (m.type === 'url' && !ctx.online && hasSnapshot(m)) {
+      node = el('img');
+      node.alt = '';
+      node.style.objectFit = 'contain';
+      node.ppSnapshot = true;
+      node.src = '/snapshot/' + m.id + '.jpg?t=' + ctx.snapshots[m.id];
+      return node;
+    }
     if (m.type === 'image' && it.size) {
       return sizedImage(m, zc, it.size);
     } else if (m.type === 'image') {
@@ -504,8 +534,9 @@
   };
 
   Zone.prototype.playable = function (it) {
-    // External URLs need the network; skip them while the device is offline.
-    return this.media[it.media].type !== 'url' || ctx.online;
+    // External URLs need the network; while offline they show their snapshot, or are skipped without one.
+    var m = this.media[it.media];
+    return m.type !== 'url' || ctx.online || hasSnapshot(m);
   };
 
   Zone.prototype.playableCount = function () {
@@ -536,7 +567,9 @@
     var m = this.media[it.media];
     var same = pick === this.idx && this.cur;
     this.idx = pick;
-    if (same && m.type !== 'video') {
+    // A page shown live while the network went away (or its snapshot shown while it came back) is replaced.
+    var swap = m.type === 'url' && !!(this.cur && this.cur.ppSnapshot) === ctx.online;
+    if (same && m.type !== 'video' && !swap) {
       this.schedule(it, m, this.cur); // single item: keep it on screen, no reload
       return;
     }
@@ -581,6 +614,10 @@
   Zone.prototype.schedule = function (it, m, node) {
     var self = this;
     var single = this.playableCount() === 1 && this.items.length === 1;
+    if (m.type === 'url' && !node.ppSnapshot) {
+      // Photograph the live page shortly before it moves on (at most 10 s after it appeared).
+      requestSnapshot(this, node, m, Math.min(10000, Math.max(3000, (it.duration || 10) * 1000 - 2000)));
+    }
     if (m.type === 'video' && !it.duration) {
       if (single) {
         node.loop = true;

@@ -62,6 +62,8 @@ func (a *Agent) Routes() http.Handler {
 		writeJSON(w, map[string]any{"ok": true})
 	})))
 	mux.Handle("/media/", onlyMethod("GET", http.HandlerFunc(a.serveMedia)))
+	mux.Handle("/api/snapshot", onlyMethod("POST", http.HandlerFunc(a.handleSnapshot)))
+	mux.Handle("/snapshot/", onlyMethod("GET", http.HandlerFunc(a.serveSnapshot)))
 	return mux
 }
 
