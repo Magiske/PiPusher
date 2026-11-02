@@ -30,7 +30,7 @@ Self-hosted digital signage inspired by PiSignage and Yodeck.
 
 Portrait is handled by rotating the player, so you don't need to change the Pi's display settings. Dynamic pages are ordinary HTML/JS. The *Weather* sample shows how to fetch live data and fall back to the last values while offline. External URLs are skipped while the screen is offline.
 
-Remote commands from the admin panel: **reload player**, **sync now**, **reboot**, **take screenshot**, **update client**. Screens report their status: online/offline, IP, model, CPU temperature, uptime, free disk space, cache size and last error.
+Remote commands from the admin panel: **reload player**, **sync now**, **reboot**, **take screenshot**, **update client**. Screens report their status: online/offline, IP, model, CPU temperature, free disk space, cache size and last error. The screen's page also shows when the device **booted**, when the **client started** and when the **player** page last **loaded**: after a reload, the daily reload or a kiosk restart. Web screens show only the player load. Boot time on Windows and the player load time need client 1.18.0 or newer.
 
 **Daily player reload** (*Settings → Reload the player every day at*, e.g. 03:00, empty = off): every screen's player reloads itself once a day at that time on its own clock, in case a page or video hangs. Pi and Windows screens reload from their local cache, so this also works offline. A web screen only reloads when the server can be reached, otherwise it keeps playing. Pi and Windows screens need client 1.17.0 or newer.
 

@@ -32,7 +32,12 @@ func (a *Agent) Routes() http.Handler {
 	web, _ := fs.Sub(webFiles, "web")
 	static := http.FileServer(http.FS(web))
 	mux := http.NewServeMux()
-	mux.Handle("/", onlyMethod("GET", noCache(static)))
+	mux.Handle("/", onlyMethod("GET", noCache(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/index.html") {
+			a.playerLoaded.Store(time.Now().UnixNano()) // the player page (re)loaded
+		}
+		static.ServeHTTP(w, r)
+	}))))
 	mux.Handle("/api/state", onlyMethod("GET", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a.playerSeen.Store(time.Now().UnixNano())
 		writeJSON(w, a.PlayerState())

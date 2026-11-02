@@ -112,7 +112,8 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         version: ctx.version,
-        info: { screen: screen.width + 'x' + screen.height, playing_layout: ctx.playing }
+        info: { screen: screen.width + 'x' + screen.height, playing_layout: ctx.playing,
+          player_age_s: window.performance ? Math.round(performance.now() / 1000) : null }
       })
     })
       .then(function (r) { return r.json(); })

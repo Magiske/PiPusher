@@ -137,7 +137,13 @@ page_header($device['name'], 'devices');
       <dt>Client</dt><dd><?= h(($info['client_version'] ?? '') . ' ' . ($info['os'] ?? '') . '/' . ($info['arch'] ?? '')) ?></dd>
       <?php endif; ?>
       <?php if (isset($info['model'])): ?><dt>Model</dt><dd><?= h($info['model']) ?></dd><?php endif; ?>
-      <?php if (isset($info['uptime_s'])): ?><dt>Uptime</dt><dd><?= h(round($info['uptime_s'] / 3600, 1)) ?> h</dd><?php endif; ?>
+      <?php
+      // Ages reported at the last sync, turned into points in time.
+      $since = fn(string $k) => isset($info[$k]) && $device['last_seen'] ? (int)$device['last_seen'] - (int)$info[$k] : null;
+      $when = fn(int $ts) => h(date(date('Y-m-d', $ts) === date('Y-m-d') ? 'H:i' : 'Y-m-d H:i', $ts) . ' (' . time_ago($ts) . ')');
+      foreach (['uptime_s' => 'Booted', 'agent_uptime_s' => 'Client started', 'player_age_s' => 'Player loaded'] as $k => $label):
+          if (($ts = $since($k)) !== null): ?><dt><?= $label ?></dt><dd><?= $when($ts) ?></dd><?php endif;
+      endforeach; ?>
       <?php if (isset($info['cpu_temp_c'])): ?><dt>CPU temp</dt><dd><?= h($info['cpu_temp_c']) ?> °C</dd><?php endif; ?>
       <?php if (isset($info['disk_free'])): ?><dt>Disk free</dt><dd><?= h(human_size((int)$info['disk_free'])) ?></dd><?php endif; ?>
       <?php if (isset($info['cache_size'])): ?><dt>Cache</dt><dd><?= h(human_size((int)$info['cache_size'])) ?></dd><?php endif; ?>

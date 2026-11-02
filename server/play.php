@@ -77,6 +77,9 @@ if (($_GET['action'] ?? '') === 'state') {
         'screen' => mb_substr((string)($sent['screen'] ?? ''), 0, 20),
         'playing_layout' => mb_substr((string)($sent['playing_layout'] ?? ''), 0, 80),
     ];
+    if (is_numeric($sent['player_age_s'] ?? null)) {
+        $info['player_age_s'] = max(0, (int)$sent['player_age_s']);
+    }
     x('UPDATE devices SET last_seen = ?, ip = ?, info = ?, command = NULL WHERE id = ?',
         [now(), $_SERVER['REMOTE_ADDR'] ?? '', json_encode($info, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $d['id']]);
     $resp = [

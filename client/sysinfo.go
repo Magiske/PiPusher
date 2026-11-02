@@ -29,12 +29,11 @@ func (a *Agent) systemInfo() map[string]any {
 	if free, ok := diskFree(a.cfg.DataDir); ok {
 		info["disk_free"] = free
 	}
-	if b, err := os.ReadFile("/proc/uptime"); err == nil {
-		if f := strings.Fields(string(b)); len(f) > 0 {
-			if v, err := strconv.ParseFloat(f[0], 64); err == nil {
-				info["uptime_s"] = int(v)
-			}
-		}
+	if up, ok := systemUptime(); ok {
+		info["uptime_s"] = int(up.Seconds())
+	}
+	if t := a.playerLoaded.Load(); t > 0 {
+		info["player_age_s"] = int(time.Since(time.Unix(0, t)).Seconds())
 	}
 	if b, err := os.ReadFile("/sys/class/thermal/thermal_zone0/temp"); err == nil {
 		if v, err := strconv.Atoi(strings.TrimSpace(string(b))); err == nil {

@@ -105,6 +105,7 @@ type Agent struct {
 	previewBusy  bool
 	previewDelay time.Duration // how long a layout is on screen before its preview is taken (Settings)
 	playerSeen   atomic.Int64  // unix nanoseconds of the player page's last /api/state request
+	playerLoaded atomic.Int64  // unix nanoseconds of the last time the player page itself was loaded
 }
 
 func NewAgent(cfg Config) (*Agent, error) {
