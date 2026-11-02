@@ -85,6 +85,7 @@ function layout_data(int $layoutId, array &$mediaIds): ?array
             'z' => (int)$z['z'],
             'fit' => $z['fit'],
             'transition' => $z['transition'],
+            'timer' => (bool)$z['timer'],
             'items' => $items,
         ];
     }

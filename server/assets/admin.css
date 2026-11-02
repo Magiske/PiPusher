@@ -179,6 +179,7 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .zone-table [data-k="transition"] { min-width: 7rem; }
 .zone-table input[type=number] { width: 4.5rem; min-width: 4.5rem; }
 .zone-table .zone-layer { white-space: nowrap; }
+.zone-table .zone-timer { text-align: center; }
 .zone-table .zone-layer .btn { padding-left: .4rem; padding-right: .4rem; }
 .zone-table .zone-layer span { margin-left: .3rem; }
 

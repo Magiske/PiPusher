@@ -236,6 +236,10 @@ function migrate(PDO $pdo): void
             'ALTER TABLE playlists ADD COLUMN folder_id INTEGER REFERENCES playlist_folders(id) ON DELETE SET NULL',
             'CREATE INDEX idx_playlists_folder ON playlists(folder_id)',
         ],
+        15 => [
+            // Zone timer: a thin progress bar at the bottom of the zone, counting down each item's duration.
+            'ALTER TABLE zones ADD COLUMN timer INTEGER NOT NULL DEFAULT 0',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

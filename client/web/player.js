@@ -518,6 +518,8 @@
     this.stopped = false;
     this.passes = 0;       // times the zone has played all its content
     this.onPass = onPass;
+    // Optional progress bar along the bottom of the zone, filling up over each item's duration.
+    this.bar = cfg.timer ? el('div', 'pp-timer', elem) : null;
     this.next();
   }
 
@@ -530,6 +532,7 @@
   Zone.prototype.stop = function () {
     this.stopped = true;
     clearTimeout(this.timer);
+    this.runBar(0);
     if (this.cur && this.cur.pause) this.cur.pause();
   };
 
@@ -613,6 +616,8 @@
 
   Zone.prototype.schedule = function (it, m, node) {
     var self = this;
+    // Items with an automatic duration (a video played to the end) have no timer bar.
+    this.runBar(it.duration > 0 ? it.duration : 0);
     var single = this.playableCount() === 1 && this.items.length === 1;
     if (m.type === 'url' && !node.ppSnapshot) {
       // Photograph the live page shortly before it moves on (at most 10 s after it appeared).
@@ -634,6 +639,19 @@
       return;
     }
     this.timer = setTimeout(function () { self.next(); }, Math.max(1, it.duration || 10) * 1000);
+  };
+
+  // Restarts the timer bar to fill over the given seconds; 0 hides it.
+  Zone.prototype.runBar = function (seconds) {
+    var bar = this.bar;
+    if (!bar) return;
+    bar.style.transition = 'none';
+    bar.style.transform = 'scaleX(0)';
+    bar.style.visibility = seconds > 0 ? 'visible' : 'hidden';
+    if (!(seconds > 0)) return;
+    void bar.offsetWidth; // start from empty
+    bar.style.transition = 'transform ' + seconds + 's linear';
+    bar.style.transform = 'scaleX(1)';
   };
 
   window.PiPusher = { start: start };

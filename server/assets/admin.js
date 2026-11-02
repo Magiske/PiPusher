@@ -226,12 +226,15 @@
         '<span class="muted small" title="1 = bottom, ' + order.length + ' = top">' + (pos + 1) + '</span></td>' +
         '<td><select data-k="fit">' + options(cfg.fits, z.fit || 'contain') + '</select></td>' +
         '<td><select data-k="transition">' + options(cfg.transitions, z.transition || 'fade') + '</select></td>' +
+        '<td class="zone-timer"><input data-k="timer" type="checkbox" title="Progress bar at the bottom of the zone"' +
+          (z.timer ? ' checked' : '') + '></td>' +
         '<td><button type="button" class="btn btn-sm btn-danger zone-remove" title="Remove zone">✕</button></td>';
       tr.addEventListener('focusin', function () { select(i, false); });
       tr.querySelectorAll('[data-k]').forEach(function (inp) {
         inp.addEventListener('input', function () {
           var k = inp.getAttribute('data-k');
-          z[k] = (k === 'name' || k === 'fit' || k === 'transition') ? inp.value : Number(inp.value);
+          if (k === 'timer') z[k] = inp.checked;
+          else z[k] = (k === 'name' || k === 'fit' || k === 'transition') ? inp.value : Number(inp.value);
           if ('xywh'.indexOf(k) >= 0) normalise(z);
           dirty = true;
           renderStage();
@@ -303,7 +306,7 @@
 
   document.getElementById('zone-add').addEventListener('click', function () {
     var maxZ = zones.reduce(function (m, z) { return Math.max(m, z.z || 0); }, 0);
-    zones.push({ id: null, name: 'Zone ' + (zones.length + 1), x: 25, y: 25, w: 50, h: 50, z: maxZ + 1, fit: 'contain', transition: 'fade' });
+    zones.push({ id: null, name: 'Zone ' + (zones.length + 1), x: 25, y: 25, w: 50, h: 50, z: maxZ + 1, fit: 'contain', transition: 'fade', timer: false });
     selected = zones.length - 1;
     dirty = true;
     renderAll();
@@ -321,7 +324,7 @@
       // Re-use existing zones (and their playlists) in order; extra zones are removed on save.
       zones = t.zones.map(function (tz, i) {
         var old = zones[i] || {};
-        return { id: old.id || null, name: old.id ? old.name : tz.name, x: tz.x, y: tz.y, w: tz.w, h: tz.h, z: i, fit: old.fit || 'contain', transition: old.transition || 'fade' };
+        return { id: old.id || null, name: old.id ? old.name : tz.name, x: tz.x, y: tz.y, w: tz.w, h: tz.h, z: i, fit: old.fit || 'contain', transition: old.transition || 'fade', timer: !!old.timer };
       });
       selected = 0;
       dirty = true;
