@@ -32,6 +32,8 @@ Portrait is handled by rotating the player, so you don't need to change the Pi's
 
 Remote commands from the admin panel: **reload player**, **sync now**, **reboot**, **take screenshot**, **update client**. Screens report their status: online/offline, IP, model, CPU temperature, uptime, free disk space, cache size and last error.
 
+**Daily player reload** (*Settings → Reload the player every day at*, e.g. 03:00, empty = off): every screen's player reloads itself once a day at that time on its own clock, in case a page or video hangs. Pi and Windows screens reload from their local cache, so this also works offline. A web screen only reloads when the server can be reached, otherwise it keeps playing. Pi and Windows screens need client 1.17.0 or newer.
+
 **Screen alignment**: each screen has X, Y, W, H (in % of the display; default 0, 0, 100, 100) that move and size the whole picture, to line up a display that crops or shifts it. Layout zones are placed inside this area, so the same layout fits every screen.
 
 **Sound**: each screen has a **Mute sound** button, and a group can mute or unmute all its screens. It applies on the screen's next sync, without reloading, and is remembered offline.

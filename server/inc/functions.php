@@ -164,6 +164,13 @@ function layout_preview_delay(): int
     return max(1, min(600, (int)setting('layout_preview_delay', '8')));
 }
 
+/** Settings: time of day ("HH:MM", screen's clock) at which every player reloads itself; '' = off. */
+function daily_reload_time(): string
+{
+    $t = (string)setting('daily_reload', '');
+    return preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t) ? $t : '';
+}
+
 /** Screenshot interval in seconds (0 = only on demand). Stored in minutes. */
 function screenshot_interval(): int
 {

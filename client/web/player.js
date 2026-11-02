@@ -35,12 +35,28 @@
       return;
     }
     setInterval(applyMute, 2000); // also catches media that HTML content adds later
+    setInterval(dailyReload, 20000);
     if (o.mode === 'web') {
       apply(o.state);
       setTimeout(pollWeb, 5000);
       return;
     }
     poll();
+  }
+
+  // Settings "reload the player every day at HH:MM" (config.reload_at, on this screen's clock): a fresh page once a
+  // day in case content hangs. Checked every 20 s, so the minute is never missed; a page younger than 90 s does not
+  // reload again. Only reloads when the page can be fetched, so an offline web screen keeps playing.
+  var reloading = false;
+  function dailyReload() {
+    if (!ctx.reloadAt || reloading || (window.performance && performance.now() < 90000)) return;
+    var now = new Date();
+    var hm = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+    if (hm !== ctx.reloadAt) return;
+    reloading = true;
+    fetch(location.href, { method: 'HEAD', cache: 'no-store' })
+      .then(function (r) { if (r.ok) location.reload(); else reloading = false; })
+      .catch(function () { reloading = false; });
   }
 
   // Sound on/off for this screen (set in the admin panel). Covers the player's videos and media inside
@@ -149,6 +165,7 @@
       return;
     }
     setFrame(s.config.screen);
+    ctx.reloadAt = s.config.reload_at || null;
     sequencer = new Sequencer(normalise(s.config));
   }
 
