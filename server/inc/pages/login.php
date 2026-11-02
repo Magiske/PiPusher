@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pending && isset($_POST['code'])) 
 page_header('Log in');
 ?>
 <div class="card">
-  <h1><span class="brand-mark">▶</span> PiPusher</h1>
+  <h1><img class="brand-mark" src="assets/favicon.svg" alt=""> PiPusher</h1>
   <?php if ($error): ?><div class="flash flash-error"><?= h($error) ?></div><?php endif; ?>
   <?php if ($pending): ?>
     <form method="post" class="stack">

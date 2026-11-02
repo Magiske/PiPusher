@@ -123,6 +123,7 @@ $base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title><?= h($d['name']) ?> · PiPusher</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/player/player.css?v=<?= PP_VERSION ?>">
 </head>
 <body>

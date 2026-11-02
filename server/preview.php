@@ -36,6 +36,7 @@ $base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
 <head>
 <meta charset="utf-8">
 <title>Preview · PiPusher</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/player/player.css?v=<?= PP_VERSION ?>">
 <style>body.pp-preview #pp-root{cursor:default}</style>
 </head>

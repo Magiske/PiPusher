@@ -22,7 +22,7 @@ pre { background: var(--code-bg); color: var(--code-text); padding: .8rem 1rem; 
 .topbar { display: flex; align-items: center; gap: 2rem; background: var(--topbar); color: var(--topbar-text); padding: 0 1.5rem; height: 56px; position: sticky; top: 0; z-index: 10; }
 .topbar a { color: var(--topbar-text); }
 .brand { font-weight: 700; font-size: 1.1rem; letter-spacing: .02em; }
-.brand-mark { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 6px; background: var(--primary); color: #fff; font-size: .8em; }
+.brand-mark { display: inline-block; width: 1.6em; height: 1.6em; vertical-align: middle; }
 .topbar nav { display: flex; gap: .3rem; flex: 1; }
 .topbar nav a { padding: .4rem .8rem; border-radius: 6px; opacity: .8; }
 .topbar nav a.active, .topbar nav a:hover { background: rgba(255,255,255,.1); opacity: 1; text-decoration: none; }

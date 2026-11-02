@@ -12,12 +12,13 @@ function page_header(string $title, string $active = ''): void
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= h($title) ?> · PiPusher</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/admin.css?v=<?= PP_VERSION ?>">
 </head>
 <body>
 <?php if (is_logged_in()): ?>
 <header class="topbar">
-  <a class="brand" href="<?= url() ?>"><span class="brand-mark">▶</span> PiPusher</a>
+  <a class="brand" href="<?= url() ?>"><img class="brand-mark" src="assets/favicon.svg" alt=""> PiPusher</a>
   <nav>
     <?php foreach ($nav as $k => $label): ?>
       <a href="<?= url(['p' => $k]) ?>" class="<?= $active === $k ? 'active' : '' ?>"><?= h($label) ?></a>
