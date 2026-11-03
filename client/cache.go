@@ -80,7 +80,7 @@ func (c *Cache) Ensure(ctx context.Context, media map[string]Media, download dow
 	c.mu.Lock()
 	c.size = total
 	c.mu.Unlock()
-	return c.saveIndex()
+	return nil
 }
 
 func (c *Cache) ensureFile(ctx context.Context, id int, f MediaFile, download downloadFunc) error {
@@ -123,7 +123,8 @@ func (c *Cache) ensureFile(ctx context.Context, id int, f MediaFile, download do
 	c.mu.Lock()
 	c.index[key] = f.SHA256
 	c.mu.Unlock()
-	return nil
+	// Saved per file, so a download that fails part-way (or a restart) keeps the files already fetched.
+	return c.saveIndex()
 }
 
 // GC removes cached files no longer referenced by the active configuration.
