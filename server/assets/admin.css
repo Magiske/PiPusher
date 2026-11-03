@@ -53,6 +53,9 @@ label { display: flex; flex-direction: column; gap: .3rem; font-weight: 500; fon
 label.check { flex-direction: row; align-items: center; gap: .5rem; font-weight: 400; }
 input, select, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: .5rem .65rem; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.time-select { display: inline-flex; align-items: center; gap: .3rem; }
+.time-select select { width: auto; }
+.time-select [hidden], label[hidden] { display: none; }
 input[type=color] { padding: 2px; height: 2.4rem; width: 4rem; }
 input.num { width: 6rem; }
 textarea.code { min-height: 60vh; resize: vertical; tab-size: 2; white-space: pre; }

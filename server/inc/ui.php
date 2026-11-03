@@ -56,6 +56,37 @@ function select_options(array $options, $selected): string
     return $out;
 }
 
+/**
+ * Hour and minute selects for a time of day ("HH:MM"), posted as <name>_h and <name>_m (read with posted_time()).
+ * $special adds choices before the hours, such as '' => 'Off'; they hide the minutes. admin.js relabels the
+ * hours in the browser's own time format (3 AM / 03).
+ */
+function time_select(string $name, string $value, array $special): string
+{
+    [$vh, $vm] = is_hhmm($value) ? array_map('intval', explode(':', $value)) : [null, 0];
+    $out = '<span class="time-select" data-time-select><select name="' . h($name) . '_h" aria-label="Hour">';
+    foreach ($special as $k => $label) {
+        $hm = preg_match('/([01]\d|2[0-3]):[0-5]\d/', $label, $mm) ? ' data-hm="' . $mm[0] . '"' : ''; // a time in the label is localised too
+        $out .= '<option value="' . h((string)$k) . '"' . $hm . ($vh === null && (string)$k === $value ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+    for ($i = 0; $i < 24; $i++) {
+        $out .= '<option value="' . $i . '" data-hour="' . $i . '"' . ($vh === $i ? ' selected' : '') . '>' . sprintf('%02d', $i) . '</option>';
+    }
+    $out .= '</select><span class="time-sep">:</span><select name="' . h($name) . '_m" aria-label="Minute">';
+    for ($i = 0; $i < 60; $i++) {
+        if ($i % 5 === 0 || $i === $vm) {
+            $out .= '<option value="' . $i . '"' . ($vm === $i ? ' selected' : '') . '>' . sprintf('%02d', $i) . '</option>';
+        }
+    }
+    return $out . '</select></span>';
+}
+
+/** A time of day shown in the viewer's own format by admin.js ("3:00 AM" / "03.00"); HH:MM without script. */
+function local_time(string $hhmm): string
+{
+    return '<time data-hm="' . h($hhmm) . '">' . h($hhmm) . '</time>';
+}
+
 function type_badge(string $type): string
 {
     return '<span class="badge badge-' . h($type) . '">' . h(strtoupper($type)) . '</span>';

@@ -170,7 +170,7 @@ function screen_payload(array $d): ?array
     if ($payload !== null && ($frame = screen_frame($d))) {
         $payload['screen'] = $frame;
     }
-    if ($payload !== null && ($at = daily_reload_time()) !== '') {
+    if ($payload !== null && ($at = screen_reload_time($d)) !== '') {
         $payload['reload_at'] = $at; // the player reloads itself every day at this time (screen's clock)
     }
     return $payload;

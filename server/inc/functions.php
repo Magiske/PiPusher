@@ -164,11 +164,39 @@ function layout_preview_delay(): int
     return max(1, min(600, (int)setting('layout_preview_delay', '8')));
 }
 
+function is_hhmm(string $t): bool
+{
+    return (bool)preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t);
+}
+
+/**
+ * Reads a time picked with time_select(): "HH:MM", or the special value chosen in the hour list
+ * (e.g. '' = off, 'off'). Null when the post holds neither.
+ */
+function posted_time(string $name, array $special): ?string
+{
+    $h = (string)($_POST[$name . '_h'] ?? '');
+    if (in_array($h, array_map('strval', array_keys($special)), true)) {
+        return $h;
+    }
+    if (!ctype_digit($h) || (int)$h > 23) {
+        return null;
+    }
+    return sprintf('%02d:%02d', (int)$h, max(0, min(59, (int)($_POST[$name . '_m'] ?? 0))));
+}
+
 /** Settings: time of day ("HH:MM", screen's clock) at which every player reloads itself; '' = off. */
 function daily_reload_time(): string
 {
     $t = (string)setting('daily_reload', '');
-    return preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t) ? $t : '';
+    return is_hhmm($t) ? $t : '';
+}
+
+/** The daily reload time a screen uses: its own (devices.reload_at), or the Settings time; '' = off. */
+function screen_reload_time(array $d): string
+{
+    $own = (string)($d['reload_at'] ?? '');
+    return $own === 'off' ? '' : (is_hhmm($own) ? $own : daily_reload_time());
 }
 
 /** Screenshot interval in seconds (0 = only on demand). Stored in minutes. */

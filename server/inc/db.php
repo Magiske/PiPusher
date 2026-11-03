@@ -240,6 +240,10 @@ function migrate(PDO $pdo): void
             // Zone timer: a thin progress bar at the bottom of the zone, counting down each item's duration.
             'ALTER TABLE zones ADD COLUMN timer INTEGER NOT NULL DEFAULT 0',
         ],
+        16 => [
+            // Per-screen daily reload: '' = the Settings time, 'off' = never, 'HH:MM' = this screen's own time.
+            "ALTER TABLE devices ADD COLUMN reload_at TEXT NOT NULL DEFAULT ''",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

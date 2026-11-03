@@ -28,6 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             : [$num('frame_x', 0, -100, 100), $num('frame_y', 0, -100, 100), $num('frame_w', 100, 10, 200), $num('frame_h', 100, 10, 200)];
         x('UPDATE devices SET frame_x = ?, frame_y = ?, frame_w = ?, frame_h = ? WHERE id = ?', [...$frame, $id]);
         flash('Screen alignment saved; the screen picks it up on its next sync.');
+    } elseif ($do === 'reload_at') {
+        $mode = (string)($_POST['reload_mode'] ?? '');
+        $at = $mode === 'own' ? posted_time('reload_at', []) : (in_array($mode, ['', 'off'], true) ? $mode : null);
+        if ($at !== null) {
+            x('UPDATE devices SET reload_at = ? WHERE id = ?', [$at, $id]);
+            flash('Daily reload saved; the screen picks it up on its next sync.');
+        }
     } elseif ($do === 'mute') {
         $muted = ($_POST['muted'] ?? '') === '1' ? 1 : 0;
         x('UPDATE devices SET muted = ? WHERE id = ?', [$muted, $id]);
@@ -203,6 +210,24 @@ page_header($device['name'], 'devices');
       W and H size it (default 100, above 100 overscans). Use it to line up a display that crops or shifts the picture.
       Layout zones are placed inside this area, so layouts need no changes. Currently
       <strong><?= screen_frame($device) ? h("{$device['frame_w']}% × {$device['frame_h']}% at {$device['frame_x']}%, {$device['frame_y']}%") : 'full screen (default)' ?></strong>.</p>
+  </div>
+
+  <div class="card">
+    <h2>Daily reload</h2>
+    <?php $global = daily_reload_time(); $reloadAt = screen_reload_time($device); ?>
+    <form method="post" class="row wrap align-end">
+      <?= csrf_field() ?><input type="hidden" name="do" value="reload_at">
+      <?php $mode = is_hhmm((string)$device['reload_at']) ? 'own' : (string)$device['reload_at']; ?>
+      <label>Reload the player every day
+        <select name="reload_mode" data-reload-mode><?= select_options(['' => 'Same as Settings' . ($global !== '' ? " ($global)" : ' (off)'),
+            'off' => 'Off on this screen', 'own' => 'At this screen\'s own time'], $mode) ?></select></label>
+      <label data-reload-own<?= $mode === 'own' ? '' : ' hidden' ?>>at
+        <?= time_select('reload_at', $mode === 'own' ? (string)$device['reload_at'] : ($global ?: '03:00'), []) ?></label>
+      <button class="btn">Save</button>
+    </form>
+    <p class="muted small">A fresh start once a day, on this screen's own clock. "Same as Settings" follows the time under
+      <a href="<?= url(['p' => 'settings']) ?>">Settings</a>. Now: <strong><?= $reloadAt !== '' ? 'every day at ' . local_time($reloadAt) : 'off' ?></strong>.
+      Needs screen client 1.17.0 or newer (web screens: right away).</p>
   </div>
 
   <div class="card">

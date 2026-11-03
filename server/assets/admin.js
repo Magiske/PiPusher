@@ -17,6 +17,82 @@
     box.innerHTML = qr.createSvgTag({ cellSize: 5, margin: 4, scalable: true });
   });
 
+  // Times of day in the viewer's own format: 12-hour with AM/PM (e.g. US) or 24-hour, as the browser's locale uses.
+  var hour12 = (function () {
+    try {
+      var o = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions();
+      return o.hourCycle ? o.hourCycle === 'h12' || o.hourCycle === 'h11' : !!o.hour12;
+    } catch (e) { return false; }
+  })();
+  function dayPeriod(h) {
+    try {
+      var part = new Intl.DateTimeFormat(undefined, { hour: 'numeric', hour12: true }).formatToParts(new Date(2000, 0, 1, h))
+        .filter(function (p) { return p.type === 'dayPeriod'; })[0];
+      if (part) return part.value;
+    } catch (e) { /* older browsers */ }
+    return h < 12 ? 'AM' : 'PM';
+  }
+  function localTime(hhmm) {
+    var hm = hhmm.split(':');
+    try {
+      return new Date(2000, 0, 1, +hm[0], +hm[1]).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    } catch (e) { return hhmm; }
+  }
+  document.querySelectorAll('time[data-hm]').forEach(function (t) { t.textContent = localTime(t.getAttribute('data-hm')); });
+  document.querySelectorAll('option[data-hm]').forEach(function (o) {
+    o.text = o.text.replace(o.getAttribute('data-hm'), localTime(o.getAttribute('data-hm')));
+  });
+  // Screen page: the time pickers only apply to "At this screen's own time".
+  document.querySelectorAll('[data-reload-mode]').forEach(function (sel) {
+    var own = sel.form.querySelector('[data-reload-own]');
+    sel.addEventListener('change', function () { own.hidden = sel.value !== 'own'; });
+  });
+
+  // Hour + minute selects from time_select(): the posted hour stays 0-23 (or a special value such as "Off").
+  document.querySelectorAll('[data-time-select]').forEach(function (box) {
+    var hour = box.querySelector('select[name$="_h"]');
+    var minute = box.querySelector('select[name$="_m"]');
+    var sep = box.querySelector('.time-sep');
+    var special = function () { return !hour.options[hour.selectedIndex].hasAttribute('data-hour'); };
+    if (!hour12) {
+      var toggle = function () { minute.hidden = sep.hidden = special(); };
+      hour.addEventListener('change', toggle);
+      toggle();
+      return;
+    }
+    // 12-hour clock: shown as hour (1-12), minutes and AM/PM; the real 0-23 select is kept hidden in sync.
+    var h12 = document.createElement('select');
+    var ap = document.createElement('select');
+    h12.setAttribute('aria-label', 'Hour');
+    ap.setAttribute('aria-label', 'AM or PM');
+    [].forEach.call(hour.options, function (o) {
+      if (!o.hasAttribute('data-hour')) h12.add(new Option(o.text, 's:' + o.value));
+    });
+    for (var i = 1; i <= 12; i++) h12.add(new Option(String(i), String(i % 12)));
+    ap.add(new Option(dayPeriod(1), '0'));
+    ap.add(new Option(dayPeriod(13), '12'));
+    function show() {
+      var o = hour.options[hour.selectedIndex];
+      if (special()) {
+        h12.value = 's:' + o.value;
+      } else {
+        h12.value = String(+o.value % 12);
+        ap.value = +o.value >= 12 ? '12' : '0';
+      }
+      minute.hidden = sep.hidden = ap.hidden = special();
+    }
+    function sync() {
+      hour.value = h12.value.indexOf('s:') === 0 ? h12.value.slice(2) : String(+h12.value + +ap.value);
+      show();
+    }
+    h12.addEventListener('change', sync);
+    ap.addEventListener('change', sync);
+    hour.hidden = true;
+    box.insertBefore(h12, hour);
+    box.appendChild(ap);
+    show();
+  });
+
   // Inputs that save their form when changed (playlist durations).
   document.querySelectorAll('[data-autosubmit]').forEach(function (inp) {
     inp.addEventListener('change', function () { inp.form.submit(); });
