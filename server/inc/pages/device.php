@@ -219,7 +219,7 @@ page_header($device['name'], 'devices');
       <?= csrf_field() ?><input type="hidden" name="do" value="reload_at">
       <?php $mode = is_hhmm((string)$device['reload_at']) ? 'own' : (string)$device['reload_at']; ?>
       <label>Reload the player every day
-        <select name="reload_mode" data-reload-mode><?= select_options(['' => 'Same as Settings' . ($global !== '' ? " ($global)" : ' (off)'),
+        <select name="reload_mode" data-reload-mode data-local-times><?= select_options(['' => 'Same as Settings' . ($global !== '' ? " ($global)" : ' (off)'),
             'off' => 'Off on this screen', 'own' => 'At this screen\'s own time'], $mode) ?></select></label>
       <label data-reload-own<?= $mode === 'own' ? '' : ' hidden' ?>>at
         <?= time_select('reload_at', $mode === 'own' ? (string)$device['reload_at'] : ($global ?: '03:00'), []) ?></label>

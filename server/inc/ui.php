@@ -7,7 +7,7 @@ function page_header(string $title, string $active = ''): void
         ? ['devices' => 'Screens', 'playlists' => 'Playlists', 'layouts' => 'Layouts', 'media' => 'Media', 'users' => 'Users', 'settings' => 'Settings']
         : ['playlists' => 'Playlists'];
     ?><!doctype html>
-<html lang="en">
+<html lang="en"<?= time_format() !== '' ? ' data-time-format="' . time_format() . '"' : '' ?>>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

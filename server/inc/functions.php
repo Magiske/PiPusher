@@ -192,6 +192,13 @@ function daily_reload_time(): string
     return is_hhmm($t) ? $t : '';
 }
 
+/** Settings: how the console shows times of day: '' = the browser's own format, '12' (AM/PM) or '24'. */
+function time_format(): string
+{
+    $f = (string)setting('time_format', '');
+    return in_array($f, ['12', '24'], true) ? $f : '';
+}
+
 /** The daily reload time a screen uses: its own (devices.reload_at), or the Settings time; '' = off. */
 function screen_reload_time(array $d): string
 {

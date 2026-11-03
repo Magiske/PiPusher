@@ -17,13 +17,15 @@
     box.innerHTML = qr.createSvgTag({ cellSize: 5, margin: 4, scalable: true });
   });
 
-  // Times of day in the viewer's own format: 12-hour with AM/PM (e.g. US) or 24-hour, as the browser's locale uses.
-  var hour12 = (function () {
+  // Times of day in the viewer's own format: 12-hour with AM/PM (e.g. US) or 24-hour, as the browser's locale uses,
+  // unless Settings -> Time format forces one (<html data-time-format="12|24">).
+  var forced = document.documentElement.getAttribute('data-time-format');
+  var hour12 = forced === '12' || (forced !== '24' && (function () {
     try {
       var o = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions();
       return o.hourCycle ? o.hourCycle === 'h12' || o.hourCycle === 'h11' : !!o.hour12;
     } catch (e) { return false; }
-  })();
+  })());
   function dayPeriod(h) {
     try {
       var part = new Intl.DateTimeFormat(undefined, { hour: 'numeric', hour12: true }).formatToParts(new Date(2000, 0, 1, h))
@@ -35,10 +37,15 @@
   function localTime(hhmm) {
     var hm = hhmm.split(':');
     try {
-      return new Date(2000, 0, 1, +hm[0], +hm[1]).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      var opts = { hour: 'numeric', minute: '2-digit' };
+      if (forced) { opts.hour12 = hour12; if (!hour12) opts.hour = '2-digit'; }
+      return new Date(2000, 0, 1, +hm[0], +hm[1]).toLocaleTimeString(undefined, opts);
     } catch (e) { return hhmm; }
   }
   document.querySelectorAll('time[data-hm]').forEach(function (t) { t.textContent = localTime(t.getAttribute('data-hm')); });
+  document.querySelectorAll('select[data-local-times] option').forEach(function (o) {
+    o.text = o.text.replace(/\b([01]\d|2[0-3]):[0-5]\d\b/g, localTime);
+  });
   document.querySelectorAll('option[data-hm]').forEach(function (o) {
     o.text = o.text.replace(o.getAttribute('data-hm'), localTime(o.getAttribute('data-hm')));
   });
