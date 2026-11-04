@@ -53,8 +53,8 @@ label { display: flex; flex-direction: column; gap: .3rem; font-weight: 500; fon
 label.check { flex-direction: row; align-items: center; gap: .5rem; font-weight: 400; }
 input, select, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: .5rem .65rem; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
-.time-select { display: inline-flex; align-items: center; gap: .3rem; }
-.time-select select { width: auto; }
+.time-select, .date-select { display: inline-flex; align-items: center; gap: .3rem; }
+.time-select select, .date-select select { width: auto; }
 .time-select [hidden], label[hidden] { display: none; }
 input[type=color] { padding: 2px; height: 2.4rem; width: 4rem; }
 input.num { width: 6rem; }
@@ -91,6 +91,7 @@ form.inline { display: inline; }
 .entry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .8rem; align-items: end; }
 .entry-grid .days { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: 7px; display: flex; flex-wrap: wrap; gap: .3rem 1rem; padding: .4rem .8rem .6rem; margin: 0; }
 .entry-grid .days legend { font-size: .9rem; font-weight: 500; padding: 0 .3rem; }
+.entry-when { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .8rem 1.4rem; align-items: end; }
 .badge-active { background: rgba(31,157,85,.15); color: var(--ok); }
 .entry-mini { margin: 0 0 .7rem; padding-left: 1.3rem; font-size: .9rem; }
 .entry-mini li.active { font-weight: 600; }

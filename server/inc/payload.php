@@ -416,7 +416,7 @@ function describe_when(array $e): string
         $parts[] = ($e['time_from'] ?: '00:00') . '–' . ($e['time_to'] ?: '24:00');
     }
     if ($e['date_from'] !== '' || $e['date_to'] !== '') {
-        $fmt = fn($d) => $d === '' ? '…' : date($e['yearly'] ? 'j M' : 'j M Y', strtotime($d));
+        $fmt = fn($d) => $d === '' ? '…' : format_date($d, !$e['yearly']);
         $parts[] = $fmt($e['date_from']) . ' – ' . $fmt($e['date_to']) . ($e['yearly'] ? ' (every year)' : '');
     }
     return $parts ? implode(' · ', $parts) : 'Always';

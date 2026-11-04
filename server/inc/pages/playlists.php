@@ -106,7 +106,7 @@ page_header($current ? $current['name'] : 'Playlists', 'playlists');
     <p class="muted"><?= (int)$p['entry_count'] ?> layout(s) · <?= count(devices_showing(null, (int)$p['id'])) ?> screen(s)</p>
     <ol class="entry-mini">
       <?php foreach (array_slice($entries, 0, 6) as $e): ?>
-        <li class="<?= entry_active($e) ? 'active' : '' ?>"><?= h($e['layout_name']) ?> <span class="muted small">· <?= h(describe_when($e)) ?></span></li>
+        <li class="<?= entry_active($e) ? 'active' : '' ?>"><?= h($e['layout_name']) ?> <span class="muted small" data-local-times>· <?= h(describe_when($e)) ?></span></li>
       <?php endforeach; ?>
       <?php if (count($entries) > 6): ?><li class="muted">… <?= count($entries) - 6 ?> more</li><?php endif; ?>
     </ol>

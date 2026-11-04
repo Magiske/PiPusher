@@ -199,6 +199,35 @@ function time_format(): string
     return in_array($f, ['12', '24'], true) ? $f : '';
 }
 
+/** Settings: how the console shows dates: '' = the browser's own order, 'dmy', 'mdy' or 'ymd'. */
+function console_date_format(): string
+{
+    $f = (string)setting('date_format', '');
+    return in_array($f, ['dmy', 'mdy', 'ymd'], true) ? $f : '';
+}
+
+/** A date ("YYYY-MM-DD") in the Settings date format; without the year when $withYear is false. */
+function format_date(string $ymd, bool $withYear = true): string
+{
+    $ts = strtotime($ymd);
+    return match (console_date_format()) {
+        'mdy' => date($withYear ? 'M j, Y' : 'M j', $ts),
+        'ymd' => date($withYear ? 'Y-m-d' : 'm-d', $ts),
+        default => date($withYear ? 'j M Y' : 'j M', $ts),
+    };
+}
+
+/** Reads a date picked with date_select(): "YYYY-MM-DD", '' when left empty, null when invalid. */
+function posted_date(string $name): ?string
+{
+    [$d, $m, $y] = array_map(fn($k) => (int)($_POST[$name . '_' . $k] ?? 0), ['d', 'm', 'y']);
+    if (!$d && !$m) {
+        return '';
+    }
+    $y = $y ?: (int)date('Y');
+    return checkdate($m, $d, $y) ? sprintf('%04d-%02d-%02d', $y, $m, $d) : null;
+}
+
 /** The daily reload time a screen uses: its own (devices.reload_at), or the Settings time; '' = off. */
 function screen_reload_time(array $d): string
 {

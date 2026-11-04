@@ -15,8 +15,8 @@ function entry_fields(): array
 {
     $days = array_values(array_filter(array_map('intval', (array)($_POST['days'] ?? [])), fn($d) => $d >= 1 && $d <= 7));
     sort($days);
-    $time = fn($k) => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)($_POST[$k] ?? '')) ? $_POST[$k] : '';
-    $date = fn($k) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_POST[$k] ?? '')) ? $_POST[$k] : '';
+    $time = fn($k) => posted_time($k, ['' => '—']) ?? '';
+    $date = fn($k) => posted_date($k) ?? '';
     return [
         // Empty = 0 = until the layout's content has played once (videos to the end).
         'duration' => trim((string)($_POST['duration'] ?? '')) === '' ? 0 : max(5, min(86400, (int)$_POST['duration'])),
@@ -106,11 +106,13 @@ function entry_form_fields(array $e, array $layouts): string
           <label class="check"><input type="checkbox" name="days[]" value="<?= $n ?>" <?= in_array((string)$n, $days, true) ? 'checked' : '' ?>> <?= $label ?></label>
         <?php endforeach; ?>
       </fieldset>
-      <label>From time <input type="time" name="time_from" value="<?= h($e['time_from'] ?? '') ?>"></label>
-      <label>To time <input type="time" name="time_to" value="<?= h($e['time_to'] ?? '') ?>"></label>
-      <label>From date <input type="date" name="date_from" value="<?= h($e['date_from'] ?? '') ?>"></label>
-      <label>To date <input type="date" name="date_to" value="<?= h($e['date_to'] ?? '') ?>"></label>
-      <label class="check"><input type="checkbox" name="yearly" value="1" <?= !empty($e['yearly']) ? 'checked' : '' ?>> Repeat dates every year</label>
+      <div class="entry-when">
+        <label>From time <?= time_select('time_from', (string)($e['time_from'] ?? ''), ['' => '—']) ?></label>
+        <label>To time <?= time_select('time_to', (string)($e['time_to'] ?? ''), ['' => '—']) ?></label>
+        <label>From date <?= date_select('date_from', (string)($e['date_from'] ?? '')) ?></label>
+        <label>To date <?= date_select('date_to', (string)($e['date_to'] ?? '')) ?></label>
+        <label class="check"><input type="checkbox" name="yearly" value="1" <?= !empty($e['yearly']) ? 'checked' : '' ?>> Repeat dates every year</label>
+      </div>
     </div>
     <?php return (string)ob_get_clean();
 }
@@ -146,7 +148,7 @@ page_header($playlist['name'], 'playlists');
 
 <div class="card">
   <h2>Queue</h2>
-  <p class="muted small">Layouts play top to bottom and then repeat. An entry is skipped while its rules don't match
+  <p class="muted small" data-local-times>Layouts play top to bottom and then repeat. An entry is skipped while its rules don't match
     (each screen checks the rules on its own clock, also when offline). Time windows may cross midnight, e.g. 22:00–06:00.
     <strong>Active now</strong> is based on the server's clock (<?= h(date('D H:i')) ?>).</p>
   <?php if (!$entries): ?>
@@ -158,7 +160,7 @@ page_header($playlist['name'], 'playlists');
       <summary>
         <span class="entry-num"><?= $i + 1 ?></span>
         <span class="entry-main"><strong><?= h($e['layout_name']) ?></strong>
-          <span class="muted"><?= (int)$e['duration'] ? (int)$e['duration'] . ' s' : 'until content ends' ?> ·<?= h(describe_when($e)) ?></span></span>
+          <span class="muted"><?= (int)$e['duration'] ? (int)$e['duration'] . ' s' : 'until content ends' ?> ·<span data-local-times><?= h(describe_when($e)) ?></span></span></span>
         <?php if ($active): ?><span class="badge badge-active">ACTIVE NOW</span><?php endif; ?>
         <span class="entry-actions">
           <?= post_button(['do' => 'move', 'dir' => 'up', 'entry_id' => $e['id']], '↑', 'btn btn-sm') ?>
@@ -194,7 +196,7 @@ page_header($playlist['name'], 'playlists');
     <?= entry_form_fields(['days' => ''], $layouts) ?>
     <div class="row"><button class="btn btn-primary">Add to queue</button></div>
   </form>
-  <p class="muted small">Examples: <em>Mon–Fri 08:00–16:00</em> for opening hours · <em>1 Dec – 26 Dec, every year</em> for Christmas ·
+  <p class="muted small" data-local-times>Examples: <em>Mon–Fri 08:00–16:00</em> for opening hours · <em>1 Dec – 26 Dec, every year</em> for Christmas ·
     a single date range for an event.</p>
   <?php endif; ?>
 </div>

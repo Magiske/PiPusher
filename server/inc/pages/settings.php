@@ -12,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_setting('daily_reload', posted_time('daily_reload', ['' => 'Off']) ?? '');
         $tf = (string)($_POST['time_format'] ?? '');
         set_setting('time_format', in_array($tf, ['12', '24'], true) ? $tf : '');
+        $df = (string)($_POST['date_format'] ?? '');
+        set_setting('date_format', in_array($df, ['dmy', 'mdy', 'ymd'], true) ? $df : '');
         set_setting('layout_preview_delay', (string)max(1, min(600, (int)($_POST['layout_preview_delay'] ?? 8))));
         $key = trim((string)($_POST['registration_key'] ?? ''));
         set_setting('registration_key', preg_replace('/[^A-Za-z0-9_-]/', '', $key));
@@ -86,7 +88,10 @@ page_header('Settings', 'settings');
           A screen can use its own time instead (on the screen's page). Needs screen client 1.17.0 or newer (web screens: right away).</span></label>
       <label>Time format
         <select name="time_format"><?= select_options(['' => 'Automatic (browser\'s format)', '24' => '24-hour (15:30)', '12' => '12-hour (3:30 PM)'], time_format()) ?></select>
-        <span class="muted small">How times of day are shown and picked in this console, such as the daily reload time.</span></label>
+        <span class="muted small">How times of day are shown and picked in this console, such as the daily reload time and playlist times.</span></label>
+      <label>Date format
+        <select name="date_format"><?= select_options(['' => 'Automatic (browser\'s order)', 'dmy' => 'Day month year (24 Dec 2026)', 'mdy' => 'Month day year (Dec 24, 2026)', 'ymd' => 'Year-month-day (2026-12-24)'], console_date_format()) ?></select>
+        <span class="muted small">How dates are shown and picked in this console, such as playlist dates.</span></label>
       <label>New screens join group <select name="default_group"><?= select_options(['' => '— no group —'] + array_map(fn($g) => $g['name'], screen_groups()), setting('default_group', '')) ?></select>
         <span class="muted small">They follow the group's content.</span></label>
       <label>New screens without a group show <select name="default_content"><?= content_options($defLayout, $defPlaylist, '— nothing (assign manually) —') ?></select></label>

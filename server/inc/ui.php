@@ -7,7 +7,7 @@ function page_header(string $title, string $active = ''): void
         ? ['devices' => 'Screens', 'playlists' => 'Playlists', 'layouts' => 'Layouts', 'media' => 'Media', 'users' => 'Users', 'settings' => 'Settings']
         : ['playlists' => 'Playlists'];
     ?><!doctype html>
-<html lang="en"<?= time_format() !== '' ? ' data-time-format="' . time_format() . '"' : '' ?>>
+<html lang="en"<?= time_format() !== '' ? ' data-time-format="' . time_format() . '"' : '' ?><?= console_date_format() !== '' ? ' data-date-format="' . console_date_format() . '"' : '' ?>>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -77,6 +77,32 @@ function time_select(string $name, string $value, array $special): string
         if ($i % 5 === 0 || $i === $vm) {
             $out .= '<option value="' . $i . '"' . ($vm === $i ? ' selected' : '') . '>' . sprintf('%02d', $i) . '</option>';
         }
+    }
+    return $out . '</select></span>';
+}
+
+/**
+ * Day, month and year selects posting <name>_d, <name>_m and <name>_y ('' = no date); read with posted_date().
+ * admin.js puts them in the viewer's order (Settings -> Date format, or the browser's) and names the months.
+ */
+function date_select(string $name, string $value): string
+{
+    [$vy, $vm, $vd] = preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? array_map('intval', explode('-', $value)) : [0, 0, 0];
+    $sel = fn($a, $b) => $a === $b ? ' selected' : '';
+    $out = '<span class="date-select" data-date-select><select name="' . h($name) . '_d" aria-label="Day"><option value="">—</option>';
+    for ($i = 1; $i <= 31; $i++) {
+        $out .= '<option value="' . $i . '"' . $sel($vd, $i) . '>' . $i . '</option>';
+    }
+    $out .= '</select><select name="' . h($name) . '_m" aria-label="Month"><option value="">—</option>';
+    for ($i = 1; $i <= 12; $i++) {
+        $out .= '<option value="' . $i . '"' . $sel($vm, $i) . '>' . date('M', mktime(0, 0, 0, $i, 1)) . '</option>';
+    }
+    $out .= '</select><select name="' . h($name) . '_y" aria-label="Year"><option value="">—</option>';
+    $now = (int)date('Y');
+    $years = array_unique(array_merge($vy ? [$vy] : [], range($now - 1, $now + 5)));
+    sort($years);
+    foreach ($years as $y) {
+        $out .= '<option value="' . $y . '"' . $sel($vy, $y) . '>' . $y . '</option>';
     }
     return $out . '</select></span>';
 }

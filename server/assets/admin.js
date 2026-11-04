@@ -43,8 +43,12 @@
     } catch (e) { return hhmm; }
   }
   document.querySelectorAll('time[data-hm]').forEach(function (t) { t.textContent = localTime(t.getAttribute('data-hm')); });
-  document.querySelectorAll('select[data-local-times] option').forEach(function (o) {
-    o.text = o.text.replace(/\b([01]\d|2[0-3]):[0-5]\d\b/g, localTime);
+  // Times inside the text of [data-local-times] elements (select options, playlist rules); 24:00 = end of the day.
+  var hhmmRe = /\b(([01]\d|2[0-3]):[0-5]\d|24:00)\b/g;
+  var relabel = function (s) { return s.replace(hhmmRe, function (t) { return t === '24:00' && !hour12 ? t : localTime(t === '24:00' ? '00:00' : t); }); };
+  document.querySelectorAll('[data-local-times]').forEach(function (box) {
+    var walk = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+    for (var n = walk.nextNode(); n; n = walk.nextNode()) n.nodeValue = relabel(n.nodeValue);
   });
   document.querySelectorAll('option[data-hm]').forEach(function (o) {
     o.text = o.text.replace(o.getAttribute('data-hm'), localTime(o.getAttribute('data-hm')));
@@ -98,6 +102,25 @@
     box.insertBefore(h12, hour);
     box.appendChild(ap);
     show();
+  });
+
+  // Day / month / year selects from date_select(), in the order of Settings -> Date format or the browser's locale.
+  var dateFormat = document.documentElement.getAttribute('data-date-format') || (function () {
+    try {
+      return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).formatToParts(new Date(2000, 11, 24))
+        .filter(function (p) { return p.type === 'day' || p.type === 'month' || p.type === 'year'; })
+        .map(function (p) { return p.type.charAt(0); }).join('');
+    } catch (e) { return 'dmy'; }
+  })();
+  if (!/^(?=.*d)(?=.*m)(?=.*y)[dmy]{3}$/.test(dateFormat)) dateFormat = 'dmy';
+  document.querySelectorAll('[data-date-select]').forEach(function (box) {
+    var month = box.querySelector('select[name$="_m"]');
+    [].forEach.call(month.options, function (o) {
+      if (!o.value) return;
+      if (dateFormat === 'ymd') { o.text = ('0' + o.value).slice(-2); return; }
+      try { o.text = new Date(2000, +o.value - 1, 1).toLocaleDateString(undefined, { month: 'short' }); } catch (e) { /* keep */ }
+    });
+    dateFormat.split('').forEach(function (c) { box.appendChild(box.querySelector('select[name$="_' + c + '"]')); });
   });
 
   // Inputs that save their form when changed (playlist durations).
