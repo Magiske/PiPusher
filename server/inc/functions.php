@@ -164,6 +164,13 @@ function layout_preview_delay(): int
     return max(1, min(600, (int)setting('layout_preview_delay', '8')));
 }
 
+/** Minutes the player may stop before a screen restarts its kiosk browser (Settings); 0 = never. */
+function browser_restart_minutes(): int
+{
+    $m = (int)setting('browser_restart', '5');
+    return $m <= 0 ? 0 : max(2, min(1440, $m));
+}
+
 function is_hhmm(string $t): bool
 {
     return (bool)preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t);

@@ -14,6 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_setting('time_format', in_array($tf, ['12', '24'], true) ? $tf : '');
         $df = (string)($_POST['date_format'] ?? '');
         set_setting('date_format', in_array($df, ['dmy', 'mdy', 'ymd'], true) ? $df : '');
+        $br = (int)($_POST['browser_restart'] ?? 5);
+        set_setting('browser_restart', (string)($br <= 0 ? 0 : max(2, min(1440, $br))));
         set_setting('layout_preview_delay', (string)max(1, min(600, (int)($_POST['layout_preview_delay'] ?? 8))));
         $key = trim((string)($_POST['registration_key'] ?? ''));
         set_setting('registration_key', preg_replace('/[^A-Za-z0-9_-]/', '', $key));
@@ -86,6 +88,10 @@ page_header('Settings', 'settings');
         <?= time_select('daily_reload', daily_reload_time(), ['' => 'Off']) ?>
         <span class="muted small">A fresh start once a day, in case a page or video hangs. Uses each screen's own clock.
           A screen can use its own time instead (on the screen's page). Needs screen client 1.17.0 or newer (web screens: right away).</span></label>
+      <label>Restart the browser when the player has stopped for (minutes)
+        <input type="number" name="browser_restart" min="0" max="1440" value="<?= browser_restart_minutes() ?>">
+        <span class="muted small">A Pi or Windows screen whose player stops responding (hung browser) restarts its kiosk browser after this time,
+          without a reboot. 0 = never, at least 2. Needs screen client 1.23.0 or newer (older ones wait for a reboot).</span></label>
       <label>Time format
         <select name="time_format"><?= select_options(['' => 'Automatic (browser\'s format)', '24' => '24-hour (15:30)', '12' => '12-hour (3:30 PM)'], time_format()) ?></select>
         <span class="muted small">How times of day are shown and picked in this console, such as the daily reload time and playlist times.</span></label>

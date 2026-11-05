@@ -65,18 +65,20 @@ type persisted struct {
 }
 
 type syncResponse struct {
-	Status       string          `json:"status"`
-	Code         string          `json:"code"`
-	Name         string          `json:"name"`
-	PollInterval int             `json:"poll_interval"`
-	ShotInterval int             `json:"screenshot_interval"`
-	Commands     []string        `json:"commands"`
-	Previews     []int           `json:"previews"` // layouts the server wants a preview screenshot of
-	PreviewDelay int             `json:"preview_delay"`
-	Muted        bool            `json:"muted"`
-	Version      string          `json:"version"`
-	Config       json.RawMessage `json:"config"`
-	Error        string          `json:"error"`
+	Status       string   `json:"status"`
+	Code         string   `json:"code"`
+	Name         string   `json:"name"`
+	PollInterval int      `json:"poll_interval"`
+	ShotInterval int      `json:"screenshot_interval"`
+	Commands     []string `json:"commands"`
+	Previews     []int    `json:"previews"` // layouts the server wants a preview screenshot of
+	PreviewDelay int      `json:"preview_delay"`
+	// Seconds the player may stop before the kiosk browser is restarted (Settings; 0 = never). Absent from older servers.
+	BrowserRestart *int            `json:"browser_restart"`
+	Muted          bool            `json:"muted"`
+	Version        string          `json:"version"`
+	Config         json.RawMessage `json:"config"`
+	Error          string          `json:"error"`
 }
 
 type Agent struct {
@@ -87,25 +89,26 @@ type Agent struct {
 	started time.Time
 	wake    chan struct{}
 
-	mu           sync.RWMutex
-	st           persisted
-	lastOK       time.Time
-	lastErr      string
-	reload       int
-	interval     time.Duration
-	shotInterval time.Duration // 0 = screenshots only on demand
-	lastShot     time.Time
-	shotErr      string
-	shotMu       sync.Mutex // held while a screenshot is in progress
-	updErr       string
-	updMu        sync.Mutex    // held while a client update is in progress
-	restart      chan struct{} // closed after a client update: main exits so the new version starts
-	playing      Playing
-	previewWant  map[int]bool // layout ids still needing a preview (from the last sync)
-	previewBusy  bool
-	previewDelay time.Duration // how long a layout is on screen before its preview is taken (Settings)
-	playerSeen   atomic.Int64  // unix nanoseconds of the player page's last /api/state request
-	playerLoaded atomic.Int64  // unix nanoseconds of the last time the player page itself was loaded
+	mu             sync.RWMutex
+	st             persisted
+	lastOK         time.Time
+	lastErr        string
+	reload         int
+	interval       time.Duration
+	shotInterval   time.Duration // 0 = screenshots only on demand
+	lastShot       time.Time
+	shotErr        string
+	shotMu         sync.Mutex // held while a screenshot is in progress
+	updErr         string
+	updMu          sync.Mutex    // held while a client update is in progress
+	restart        chan struct{} // closed after a client update: main exits so the new version starts
+	playing        Playing
+	previewWant    map[int]bool // layout ids still needing a preview (from the last sync)
+	previewBusy    bool
+	previewDelay   time.Duration // how long a layout is on screen before its preview is taken (Settings)
+	browserRestart time.Duration // player quiet this long: restart the kiosk browser (Settings; 0 = never)
+	playerSeen     atomic.Int64  // unix nanoseconds of the player page's last /api/state request
+	playerLoaded   atomic.Int64  // unix nanoseconds of the last time the player page itself was loaded
 }
 
 func NewAgent(cfg Config) (*Agent, error) {
@@ -113,12 +116,13 @@ func NewAgent(cfg Config) (*Agent, error) {
 		return nil, err
 	}
 	a := &Agent{
-		cfg:      cfg,
-		started:  time.Now(),
-		wake:     make(chan struct{}, 1),
-		restart:  make(chan struct{}),
-		interval: time.Duration(maxInt(10, cfg.PollInterval)) * time.Second,
-		cache:    NewCache(cfg.DataDir),
+		cfg:            cfg,
+		started:        time.Now(),
+		wake:           make(chan struct{}, 1),
+		restart:        make(chan struct{}),
+		interval:       time.Duration(maxInt(10, cfg.PollInterval)) * time.Second,
+		cache:          NewCache(cfg.DataDir),
+		browserRestart: defaultBrowserRestart,
 	}
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.ResponseHeaderTimeout = 60 * time.Second
@@ -286,6 +290,9 @@ func (a *Agent) syncOnce(ctx context.Context) error {
 	a.shotInterval = time.Duration(maxInt(0, sr.ShotInterval)) * time.Second
 	if sr.PreviewDelay > 0 {
 		a.previewDelay = time.Duration(sr.PreviewDelay) * time.Second
+	}
+	if sr.BrowserRestart != nil {
+		a.browserRestart = time.Duration(maxInt(0, *sr.BrowserRestart)) * time.Second
 	}
 	changed := a.st.Code != sr.Code || a.st.Name != sr.Name || a.st.Muted != sr.Muted
 	a.st.Muted = sr.Muted
