@@ -58,4 +58,55 @@ fi
 if [ -f "$AUTOSTART" ] && ! grep -q -- '-nocursor' "$AUTOSTART"; then
   sed -i 's|^\(exec "\$STARTX" /usr/bin/chromium .*\)$|\1 -- -nocursor|' "$AUTOSTART"
 fi
+
+# GPU memory (GPU_MEM, needed for hardware video decoding) and the temperature at which the CPU slows down
+# (TEMP_LIMIT), in config.txt. Only values in a safe range are used. The firmware reads config.txt at boot, so
+# the Pi restarts once after a change (not on the first start, which restarts anyway; option --no-reboot).
+CFG=/boot/firmware/config.txt
+[ -f "$CFG" ] || CFG=/boot/config.txt
+if [ -f "$CFG" ]; then
+  # Board memory in MB from the revision code (bits 20-22), else from what Linux sees.
+  REV=$(awk '/^Revision/ { print $3 }' /proc/cpuinfo)
+  case "$REV" in
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
+    *) REV=0 ;;
+  esac
+  if [ $(((0x$REV >> 23) & 1)) = 1 ]; then   # new-style revision code
+    RAM=$((256 << ((0x$REV >> 20) & 7)))
+  else
+    RAM=$(awk '/^MemTotal:/ { print int($2 / 1024) }' /proc/meminfo)
+  fi
+  GPU=$(get GPU_MEM | tr -d ' ')
+  case "$GPU" in
+    ''|*[!0-9]*) if [ "$RAM" -le 512 ]; then GPU=64; else GPU=128; fi ;;   # auto
+  esac
+  [ "$GPU" -lt 16 ] && GPU=16
+  [ "$GPU" -gt 512 ] && GPU=512
+  [ "$RAM" -le 512 ] && [ "$GPU" -gt 128 ] && GPU=128   # leave a 512 MB board enough for Chromium
+  TEMP=$(get TEMP_LIMIT | tr -d ' ')
+  case "$TEMP" in
+    ''|*[!0-9]*) TEMP=80 ;;
+  esac
+  [ "$TEMP" -lt 65 ] && TEMP=65
+  [ "$TEMP" -gt 85 ] && TEMP=85
+
+  set_cfg() {
+    if grep -q "^$1=" "$CFG"; then
+      grep -q "^$1=$2\$" "$CFG" || sed -i "s/^$1=.*/$1=$2/" "$CFG"
+    else
+      # New lines at the end, for every board (not inside a [pi4]-style section).
+      [ "$(grep '^\[' "$CFG" | tail -n1 | tr -d '\r')" = "" ] || [ "$(grep '^\[' "$CFG" | tail -n1 | tr -d '\r')" = "[all]" ] ||
+        echo "[all]" >> "$CFG"
+      echo "$1=$2" >> "$CFG"
+    fi
+  }
+  BEFORE=$(cksum < "$CFG")
+  for k in gpu_mem gpu_mem_256 gpu_mem_512 gpu_mem_1024; do set_cfg "$k" "$GPU"; done
+  set_cfg temp_limit "$TEMP"
+  if [ "$(cksum < "$CFG")" != "$BEFORE" ] && [ "$1" != "--no-reboot" ]; then
+    echo "PiPusher: config.txt changed (gpu_mem=$GPU, temp_limit=$TEMP), restarting"
+    sync
+    systemctl --no-block reboot
+  fi
+fi
 exit 0

@@ -264,7 +264,7 @@
     // Switch when the current entry's window ended, or something became eligible while idle/fallback.
     if (!currentOk && (this.idx >= 0 || ok.length)) {
       this.next();
-    } else if (currentOk && ok.length > 1 && !this.timer && !this.auto) {
+    } else if (currentOk && ok.length > 1 && !this.timer && !this.auto && this.shown && this.shown.visible) {
       // Was the only eligible entry; others are allowed now, so start rotating again.
       var d = this.seq[this.idx].duration;
       if (d > 0) this.timer = setTimeout(function () { self.next(); }, d * 1000);
@@ -311,36 +311,68 @@
     this.idx = pick;
     var e = this.seq[pick];
     this.show(e.layout);
-    if (el.length > 1 && e.duration > 0) {
-      this.timer = setTimeout(function () { self.next(); }, e.duration * 1000);
-    } else if (el.length > 1) {
-      this.startAuto();
-    }
+    if (el.length < 2) return;
+    // The entry's time starts once its layout is on screen, not while it loads.
+    var shown = this.shown;
+    whenVisible(shown, function () {
+      if (self.stopped || self.shown !== shown) return;
+      if (e.duration > 0) self.timer = setTimeout(function () { self.next(); }, e.duration * 1000);
+      else self.startAuto();
+    });
   };
+
+  function whenVisible(shown, fn) {
+    if (shown.visible) fn();
+    else shown.onVisible = fn;
+  }
 
   Sequencer.prototype.show = function (layoutId) {
     if (this.shown && this.shown.layoutId === layoutId) return; // already on screen
     var old = this.shown;
+    if (old && !old.visible) {
+      // Replaced while still loading: drop it, the layout before it is still on screen.
+      clearTimeout(old.limit);
+      old.zones.forEach(function (z) { z.stop(); });
+      old.stage.remove();
+      old = old.prev;
+    }
+    var layoutReady = null;
     if (layoutId === null) {
-      var blank = el('div', 'pp-stage pp-layout pp-in', root);
+      var blank = el('div', 'pp-stage pp-layout', root);
       blank.style.inset = '0';
       this.shown = { layoutId: null, stage: blank, zones: [] };
     } else {
       var self = this;
-      this.shown = buildLayout(this.layouts[layoutId], this.cfg.media || {}, function (z) { return self.zoneDone(z); });
+      this.shown = buildLayout(this.layouts[layoutId], this.cfg.media || {}, function (z) { return self.zoneDone(z); },
+        function () { if (layoutReady) layoutReady(); });
       this.shown.layoutId = layoutId;
       report(this.layouts[layoutId]);
     }
-    var stage = this.shown.stage;
-    void stage.offsetWidth;
-    stage.classList.add('pp-in');
-    if (old) {
-      old.stage.classList.add('pp-out');
-      setTimeout(function () {
-        old.zones.forEach(function (z) { z.stop(); });
-        old.stage.remove();
-      }, 900);
+    var shown = this.shown;
+    shown.prev = old;
+    shown.visible = false;
+    // The new layout fades in over the old one once every zone shows its first item (or after the load limit).
+    function swap() {
+      if (shown.visible) return;
+      shown.visible = true;
+      shown.prev = null;
+      clearTimeout(shown.limit);
+      void shown.stage.offsetWidth;
+      shown.stage.classList.add('pp-in');
+      if (shown.onVisible) shown.onVisible();
+      if (old) {
+        old.stage.classList.add('pp-out');
+        setTimeout(function () {
+          old.zones.forEach(function (z) { z.stop(); });
+          old.stage.remove();
+        }, 900);
+      }
     }
+    layoutReady = function () {
+      if (shown.zones.every(function (z) { return z.ready; })) swap();
+    };
+    shown.limit = setTimeout(swap, LOAD_LIMIT);
+    layoutReady();
   };
 
   // Tell the local agent which layout is on screen (status + upright screenshots).
@@ -354,7 +386,7 @@
     }).catch(function () {});
   }
 
-  function buildLayout(L, media, onPass) {
+  function buildLayout(L, media, onPass, onReady) {
     var rot = ROTATION[L.orientation] || 0;
     var stage = el('div', 'pp-stage pp-layout', root);
     stage.style.background = L.background || '#000';
@@ -369,7 +401,7 @@
       ze.style.width = zc.w + '%';
       ze.style.height = zc.h + '%';
       ze.style.zIndex = zc.z;
-      zones.push(new Zone(ze, zc, media, onPass));
+      zones.push(new Zone(ze, zc, media, onPass, onReady));
     });
     return { stage: stage, zones: zones };
   }
@@ -480,7 +512,7 @@
       node.style.objectFit = zc.fit || 'contain';
     } else if (m.type === 'video') {
       node = el('video');
-      node.autoplay = true;
+      node.preload = 'auto'; // loaded in full before it is shown, then started by playVideo()
       node.playsInline = true;
       node.muted = opts.mode === 'static' || ctx.muted;
       node.ppMuted = opts.mode !== 'static' && ctx.muted;
@@ -492,22 +524,26 @@
       node.addEventListener('load', applyMute);
     }
     node.src = mediaUrl(m);
-    if (m.type === 'video') {
-      var p = node.play && node.play();
-      if (p && p.catch) {
-        // Autoplay with sound blocked by the browser (web screens without a click): play muted instead.
-        p.catch(function (e) {
-          if (e && e.name === 'NotAllowedError' && !node.muted) {
-            node.muted = true;
-            node.play().catch(function () {});
-          }
-        });
-      }
-    }
     return node;
   }
 
-  function Zone(elem, cfg, media, onPass) {
+  function playVideo(node) {
+    var p = node.play && node.play();
+    if (p && p.catch) {
+      // Autoplay with sound blocked by the browser (web screens without a click): play muted instead.
+      p.catch(function (e) {
+        if (e && e.name === 'NotAllowedError' && !node.muted) {
+          node.muted = true;
+          node.play().catch(function () {});
+        }
+      });
+    }
+  }
+
+  // How long an item (or a layout's first items) may take to load before it is shown anyway.
+  var LOAD_LIMIT = 15000;
+
+  function Zone(elem, cfg, media, onPass, onReady) {
     this.el = elem;
     this.cfg = cfg;
     this.media = media;
@@ -518,6 +554,8 @@
     this.stopped = false;
     this.passes = 0;       // times the zone has played all its content
     this.onPass = onPass;
+    this.onReady = onReady;
+    this.ready = false;    // shows its first item (or has nothing to show)
     // Optional progress bar along the bottom of the zone, filling up over each item's duration.
     this.bar = cfg.timer ? el('div', 'pp-timer', elem) : null;
     this.next();
@@ -527,6 +565,12 @@
   Zone.prototype.pass = function () {
     this.passes++;
     return !!(this.onPass && this.onPass(this));
+  };
+
+  Zone.prototype.markReady = function () {
+    if (this.ready) return;
+    this.ready = true;
+    if (this.onReady) this.onReady();
   };
 
   Zone.prototype.stop = function () {
@@ -560,6 +604,7 @@
     if (pick < 0) {
       if (this.cur) { this.cur.remove(); this.cur = null; }
       this.idx = -1;
+      this.markReady();
       if (this.pass()) return; // nothing playable counts as done
       this.timer = setTimeout(function () { self.next(); }, 5000);
       return;
@@ -588,30 +633,42 @@
     var prev = this.cur;
     this.cur = node;
     var shown = false;
+    // The previous item stays on screen until this one has loaded (a picture decoded, a video able to play
+    // through, a page loaded), so nothing appears half-drawn. Its duration and timer bar start when it is shown.
     function reveal() {
-      if (shown || self.stopped) return;
+      if (shown || self.stopped || self.cur !== node) return;
       shown = true;
+      clearTimeout(limit);
       // Force a style flush so the transition runs from the initial state.
       void node.offsetWidth;
       node.classList.add('pp-in');
       if (prev) {
         prev.classList.add('pp-out');
+        if (prev.pause) prev.pause();
         setTimeout(function () { prev.remove(); }, 900);
       }
+      if (m.type === 'video') playVideo(node);
+      self.schedule(it, m, node);
+      self.markReady();
     }
+    var limit = setTimeout(reveal, LOAD_LIMIT);
     if (m.type === 'video') {
-      node.addEventListener('loadeddata', reveal);
+      node.addEventListener('canplaythrough', reveal);
       node.addEventListener('error', function () {
         reveal();
         clearTimeout(self.timer);
         self.timer = setTimeout(function () { self.next(); }, 2000);
       });
+    } else if (media.tagName === 'IMG') {
+      media.addEventListener('load', function () {
+        if (media.decode) media.decode().then(reveal, reveal);
+        else reveal();
+      });
+      media.addEventListener('error', reveal);
     } else {
       media.addEventListener('load', reveal);
       media.addEventListener('error', reveal);
     }
-    setTimeout(reveal, 2500);
-    this.schedule(it, m, node);
   };
 
   Zone.prototype.schedule = function (it, m, node) {

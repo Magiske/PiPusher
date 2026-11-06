@@ -30,8 +30,18 @@ if [ -n "$DISPLAY" ]; then
     --disable-features=Translate,TranslateUI,MediaRouter,OptimizationHints,AutofillServerCommunication
     --disk-cache-size=33554432 --renderer-process-limit=2"
 
-  # 1 GB RAM or less (Pi 3, Zero 2 W): Chromium's low-memory mode, and no extra processes per site.
-  if [ "$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)" -le 1100000 ]; then
-    CHROMIUM_FLAGS="$CHROMIUM_FLAGS --enable-low-end-device-mode --disable-site-isolation-trials"
+  # 1 GB RAM or less (Pi 3, Zero 2 W): no extra processes per site.
+  MEM=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)
+  if [ "$MEM" -le 1100000 ]; then
+    CHROMIUM_FLAGS="$CHROMIUM_FLAGS --disable-site-isolation-trials"
   fi
+  # Chromium's low-memory mode (pipusher.txt LOW_MEMORY): less memory, but 16-bit colours (visible banding).
+  # auto = only on 512 MB boards (Zero 2 W).
+  LOW=$(sed -n 's/^[[:blank:]]*LOW_MEMORY=//p' /boot/firmware/pipusher.txt 2>/dev/null | tail -n1 | tr -d '\r ')
+  case "$LOW" in
+    on) LOW=1 ;;
+    off) LOW= ;;
+    *) LOW=; [ "$MEM" -le 600000 ] && LOW=1 ;;
+  esac
+  [ -n "$LOW" ] && CHROMIUM_FLAGS="$CHROMIUM_FLAGS --enable-low-end-device-mode"
 fi

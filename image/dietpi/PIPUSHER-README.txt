@@ -15,3 +15,5 @@ SSH:      ssh dietpi@<ip or host name>   (password from pipusher.txt, default "p
 Logs:     journalctl -u pipusher -f
 Settings: edit pipusher.txt on the boot drive at any time (SERVER, KEY, NAME, RESOLUTION),
           or on the Pi: /boot/firmware/pipusher.txt, then reboot.
+Speed:    LOW_MEMORY, GPU_MEM and TEMP_LIMIT in pipusher.txt. Videos play smoothest as H.264 MP4 at
+          1080p or less (Pi 3: 720p-1080p); H.265/HEVC and 4K play badly on a Pi 2/3.

@@ -186,6 +186,15 @@ Output: `dist\pipusher-dietpi-<model>-<ver>.img.xz` (+ `.sha256`). The DietPi ba
 
 `SERVER`, `KEY`, `NAME` and `RESOLUTION` are applied at every boot, so they can be changed later on the boot drive or in `/boot/firmware/pipusher.txt`. The password and Wi-Fi settings are used on the first start and then blanked in the file. SSH: `ssh dietpi@<host>` (default password `pipusher`; set your own in `pipusher.txt`).
 
+Performance settings in `pipusher.txt`, also applied at every boot:
+- `LOW_MEMORY=auto|on|off`: Chromium's low-memory mode. It saves memory but draws with 16-bit colours (visible banding); `auto` uses it only on 512 MB boards (Zero 2 W).
+- `GPU_MEM=auto|16-512`: GPU memory in MB, needed for hardware video decoding. `auto` = 128, or 64 on 512 MB boards (DietPi's own default of 16 leaves the Pi without video decoding).
+- `TEMP_LIMIT=65-85`: the temperature (°C) at which the CPU slows down; default 80 (DietPi's is 65).
+
+After a change to `GPU_MEM` or `TEMP_LIMIT` the Pi restarts once by itself, since the firmware only reads `config.txt` at boot. On a Pi 2/3 use H.264 MP4 videos at 1080p or less.
+
+The player shows each picture, video or page only once it has fully loaded in the browser, keeping the previous one on screen until then (at most 15 s). An item's duration, its timer bar and a playlist entry's time start when it appears.
+
 The kit is in `image\dietpi\`:
 
 | File | Role |

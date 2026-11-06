@@ -21,3 +21,12 @@ WIFI_COUNTRY=DK
 
 # Screen resolution for the browser window: auto (from the screen) or e.g. 1920x1080.
 RESOLUTION=auto
+
+# Performance. Read at every start; after a change to GPU_MEM or TEMP_LIMIT the Pi restarts once by itself.
+# Chromium low-memory mode: auto (only on 512 MB boards such as the Zero 2 W), on or off.
+# "on" saves memory but shows fewer colours (banding).
+LOW_MEMORY=auto
+# GPU memory in MB, needed for smooth (hardware) video: auto (128, or 64 on 512 MB boards) or 16-512.
+GPU_MEM=auto
+# The CPU slows down above this temperature (degrees C): 65-85. Above 75 use a heatsink or a case with a fan.
+TEMP_LIMIT=80
