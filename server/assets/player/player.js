@@ -342,7 +342,7 @@
       // Replaced while still loading: drop it, the layout before it is still on screen.
       clearTimeout(old.limit);
       old.zones.forEach(function (z) { z.stop(); });
-      old.stage.remove();
+      discard(old.stage);
       old = old.prev;
     }
     var layoutReady = null;
@@ -373,7 +373,7 @@
         old.stage.classList.add('pp-out');
         setTimeout(function () {
           old.zones.forEach(function (z) { z.stop(); });
-          old.stage.remove();
+          discard(old.stage);
         }, 900);
       }
     }
@@ -503,6 +503,29 @@
     }, delay);
   }
 
+  // Removes an item or layout and frees what it holds at once. A removed video keeps its hardware decoder until
+  // garbage collection, and TVs (and the Pi) have only a few: the next videos then cannot start.
+  function discard(node) {
+    if (!node) return;
+    var held = /^(VIDEO|IFRAME)$/.test(node.tagName) ? [node] : [];
+    held = held.concat(Array.prototype.slice.call(node.querySelectorAll('video, iframe')));
+    held.forEach(function (m) {
+      try {
+        if (m.tagName === 'VIDEO') {
+          m.pause();
+          m.removeAttribute('src');
+          m.load();
+        } else {
+          m.src = 'about:blank';
+        }
+      } catch (e) { /* already gone */ }
+    });
+    node.remove();
+  }
+
+  // A video without a picture yet shows nothing instead of the browser's play symbol.
+  var NO_POSTER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
   function makeNode(m, zc, it) {
     var node;
     if (m.type === 'url' && !ctx.online && hasSnapshot(m)) {
@@ -522,6 +545,7 @@
     } else if (m.type === 'video') {
       node = el('video');
       node.preload = 'auto'; // loaded in full before it is shown, then started by playVideo()
+      node.poster = NO_POSTER;
       node.playsInline = true;
       node.muted = opts.mode === 'static' || ctx.muted;
       node.ppMuted = opts.mode !== 'static' && ctx.muted;
@@ -612,7 +636,7 @@
       if (this.playable(this.items[j])) { pick = j; break; }
     }
     if (pick < 0) {
-      if (this.cur) { this.cur.remove(); this.cur = null; }
+      if (this.cur) { discard(this.cur); this.cur = null; }
       this.idx = -1;
       this.markReady();
       if (this.pass()) return; // nothing playable counts as done
@@ -655,7 +679,7 @@
       if (prev) {
         prev.classList.add('pp-out');
         if (prev.pause) prev.pause();
-        setTimeout(function () { prev.remove(); }, 900);
+        setTimeout(function () { discard(prev); }, 900);
       }
       if (m.type === 'video') playVideo(node);
       self.schedule(it, m, node);
@@ -694,9 +718,9 @@
       this.cur = null;
       if (after === 'fadeout') {
         node.classList.add('pp-fadeout');
-        setTimeout(function () { node.remove(); }, 1200);
+        setTimeout(function () { discard(node); }, 1200);
       } else {
-        node.remove();
+        discard(node);
       }
     }
     this.pass();
