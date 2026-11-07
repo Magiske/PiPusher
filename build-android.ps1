@@ -15,7 +15,7 @@
     x86_64        GOOS=linux           } Android too, with the pipusher_android tag (time zones, reports "android")
 
   Output:
-    dist\pipusher-android-<ver>.apk
+    dist\pipusher-android-experimental-<ver>.apk   (the app is experimental)
 #>
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -136,7 +136,7 @@ if (-not (Test-Path $ks)) {
         '-validity', '10000', '-dname', 'CN=PiPusher', '-storepass', 'pipusher', '-keypass', 'pipusher') 'keytool'
 }
 New-Item -ItemType Directory -Force $dist | Out-Null
-$apk = Join-Path $dist "pipusher-android-$Version.apk"
+$apk = Join-Path $dist "pipusher-android-experimental-$Version.apk"
 Invoke-Tool "$buildTools\apksigner.bat" @('sign', '--ks', $ks, '--ks-key-alias', 'pipusher', '--ks-pass', 'pass:pipusher',
     '--key-pass', 'pass:pipusher', '--out', $apk, "$work\aligned.apk") 'apksigner'
 Invoke-Tool "$buildTools\apksigner.bat" @('verify', $apk) 'APK verification'

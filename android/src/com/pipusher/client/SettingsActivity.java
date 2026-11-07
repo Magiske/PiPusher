@@ -60,7 +60,7 @@ public class SettingsActivity extends Activity {
         col.setOrientation(LinearLayout.VERTICAL);
         col.setPadding(pad, pad, pad, pad);
 
-        TextView title = text(col, "PiPusher " + version(), 24);
+        TextView title = text(col, "PiPusher " + version() + " (experimental)", 24);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         status = text(col, "", 15);
         status.setPadding(0, dp(6), 0, dp(12));

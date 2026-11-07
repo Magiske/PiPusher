@@ -230,10 +230,10 @@ The kiosk script restarts Chrome or the agent if either exits, keeps the display
 
 Turn on automatic sign-in for a dedicated screen PC, so it comes back after a power cut.
 
-## Android screen (trial)
+## Android screen (experimental)
 
 An Android phone, tablet or TV box (Android 5.0 or newer) can act as a screen with the PiPusher app,
-`pipusher-android-<ver>.apk`. It is a first version to see whether Android screens are worth it, and it has not yet been
+`pipusher-android-experimental-<ver>.apk`. **Experimental:** a first version to see whether Android screens are worth it, and it has not yet been
 tested on a real device. The APK is only built when asked for: `.\build-android.ps1` (after `build.ps1`).
 
 The app runs the same Go agent as a Pi (built into the APK), so content is cached for offline playback and the
@@ -251,7 +251,7 @@ screen registers, syncs and takes commands like any other. Everything is set in 
 | Use as home app | Home and start-up always return to the player (the device asks once which home app to use) |
 | PIN | protects the settings |
 
-Install: copy the APK to the device and open it (allow installs from that source), or `adb install pipusher-android-<ver>.apk`.
+Install: copy the APK to the device and open it (allow installs from that source), or `adb install pipusher-android-experimental-<ver>.apk`.
 The first start opens the settings; **Save and start player** starts it, and the settings show the device code
 while the screen waits for approval. Later starts go straight to the player.
 

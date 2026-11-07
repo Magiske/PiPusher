@@ -184,8 +184,8 @@ page_header($device['name'], 'devices');
       <p class="muted small">Client <?= h($clientVersion) ?>, server <?= h(PP_VERSION) ?>. Clients older than 1.9.0 cannot update
         themselves: install the new client on the screen once (see Settings), later updates can then be sent from here.</p>
     <?php elseif (($info['os'] ?? '') === 'android'): ?>
-      <p class="muted small">Client <?= h($clientVersion ?: '?') ?>, server <?= h(PP_VERSION) ?>. Android screens are updated by
-        installing the new PiPusher app (APK) on the device; its settings and cache are kept.</p>
+      <p class="muted small">Client <?= h($clientVersion ?: '?') ?>, server <?= h(PP_VERSION) ?>. Android screens (experimental) are
+        updated by installing the new PiPusher app (APK) on the device; its settings and cache are kept.</p>
     <?php elseif (!$package || empty($package['path'])): ?>
       <p class="muted small">Client <?= h($clientVersion ?: '?') ?>, server <?= h(PP_VERSION) ?>. This server has no client package
         for this screen (<?= h(($info['os'] ?? '?') . '/' . ($info['arch'] ?? '?')) ?>).</p>
