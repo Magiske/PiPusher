@@ -44,7 +44,11 @@ func (a *Agent) watchKiosk(ctx context.Context) {
 		a.mu.RUnlock()
 		if quiet := time.Since(later(polled, restarted)); limit > 0 && quiet >= limit {
 			log.Printf("kiosk player has not polled for %s, restarting the browser", quiet.Round(time.Second))
-			if n, err := killKioskBrowser(ctx, a.devtoolsPort()); err != nil {
+			if a.controlled() {
+				if _, err := a.controlCall(ctx, http.MethodPost, "restart"); err != nil {
+					log.Printf("kiosk: %v", err)
+				}
+			} else if n, err := killKioskBrowser(ctx, a.devtoolsPort()); err != nil {
 				log.Printf("kiosk: %v", err)
 			} else if n == 0 {
 				log.Print("kiosk: no kiosk browser process found")
@@ -56,6 +60,9 @@ func (a *Agent) watchKiosk(ctx context.Context) {
 		if time.Since(seen) < playerQuiet {
 			stuck = 0
 			continue
+		}
+		if a.controlled() {
+			continue // the app's player has no DevTools tabs; the restart above covers it
 		}
 		var targets []devtoolsTarget
 		if err := a.devtoolsCall(ctx, http.MethodGet, "/json/list", &targets); err != nil {

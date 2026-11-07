@@ -13,7 +13,7 @@ import (
 func (a *Agent) systemInfo() map[string]any {
 	a.mu.RLock()
 	info := map[string]any{
-		"os":               runtime.GOOS,
+		"os":               platformOS,
 		"arch":             runtime.GOARCH,
 		"go_version":       runtime.Version(),
 		"local_ip":         localIP(),
@@ -50,7 +50,7 @@ func (a *Agent) systemInfo() map[string]any {
 func localIP() string {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return ""
+		return routedIP()
 	}
 	for _, ifc := range ifaces {
 		if ifc.Flags&net.FlagUp == 0 || ifc.Flags&net.FlagLoopback != 0 {
@@ -62,6 +62,20 @@ func localIP() string {
 				return ipn.IP.String()
 			}
 		}
+	}
+	return routedIP()
+}
+
+// routedIP is the address used to reach the internet, for systems that hide their interfaces from apps (Android).
+// A UDP "connection" sends nothing.
+func routedIP() string {
+	c, err := net.Dial("udp", "8.8.8.8:53")
+	if err != nil {
+		return ""
+	}
+	defer c.Close()
+	if a, ok := c.LocalAddr().(*net.UDPAddr); ok && !a.IP.IsLoopback() {
+		return a.IP.String()
 	}
 	return ""
 }

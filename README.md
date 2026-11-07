@@ -230,6 +230,53 @@ The kiosk script restarts Chrome or the agent if either exits, keeps the display
 
 Turn on automatic sign-in for a dedicated screen PC, so it comes back after a power cut.
 
+## Android screen (trial)
+
+An Android phone, tablet or TV box (Android 5.0 or newer) can act as a screen with the PiPusher app,
+`pipusher-android-<ver>.apk`. It is a first version to see whether Android screens are worth it, and it has not yet been
+tested on a real device. The APK is only built when asked for: `.\build-android.ps1` (after `build.ps1`).
+
+The app runs the same Go agent as a Pi (built into the APK), so content is cached for offline playback and the
+screen registers, syncs and takes commands like any other. Everything is set in the app; there are no files to edit:
+
+| Setting | |
+|---|---|
+| Server address | `https://example.com/pipusher/` |
+| Screen name | defaults to the device name |
+| Registration key | optional: approves the screen at once |
+| Self-signed certificate | accept one (`insecure_tls`) |
+| Browser | **Built-in fullscreen player** (default), **System default browser**, or any installed browser |
+| Screen orientation | landscape, portrait, either upside down, or follow the device |
+| Start on boot | starts the agent and opens the player when the device starts |
+| Use as home app | Home and start-up always return to the player (the device asks once which home app to use) |
+| PIN | protects the settings |
+
+Install: copy the APK to the device and open it (allow installs from that source), or `adb install pipusher-android-<ver>.apk`.
+The first start opens the settings; **Save and start player** starts it, and the settings show the device code
+while the screen waits for approval. Later starts go straight to the player.
+
+- **Leaving the player:** 5 taps in the top-left corner, 5 presses of OK on a remote, Menu, or holding Back, then
+  the PIN when one is set. Back alone does nothing.
+- **Start on boot, Android 10 and newer:** Android only lets an app open on screen at start-up when it may *Display
+  over other apps*. The settings have a button for it. On TV boxes without that screen:
+  `adb shell appops set com.pipusher.client SYSTEM_ALERT_WINDOW allow`. *Use as home app* is an alternative.
+- **Phones and tablets:** allow *Keep running in the background* (battery optimisation) in the settings, or the
+  system may stop the player.
+- **Built-in player:** a fullscreen WebView (Chrome's engine, updated through Android System WebView). Videos play
+  with sound, the screen stays on, and a stuck player is restarted (Settings → browser restart time). Screenshots,
+  layout previews and page snapshots work.
+- **Another browser:** shows the player at `http://127.0.0.1:8090/` with its own address bar. It may block video
+  sound until the screen is touched, and screenshots are not possible. A stuck player is opened again.
+- **Reboot** works on rooted devices only; on others it restarts the agent and the player.
+- **Update client** is not available: install the new APK over the old one (settings and cache are kept). The APK
+  must be signed with the same key, `tools\android-release.jks`, which the first build created. Keep a copy of it.
+
+Inside the app, `libpipusher.so` is the Go agent. `arm64-v8a` is built for Android; `armeabi-v7a` and `x86_64` are
+static Linux builds with the `pipusher_android` tag. The app writes the agent's `pipusher.json` and runs the agent
+as a foreground service. That file also sets `control_url`, the app's control port `127.0.0.1:8091` for screenshots,
+restarts and reboots, and `dns_file`, because Android has no `/etc/resolv.conf`. **Show log** in the settings shows
+the agent's log.
+
 ## Web player (online, no client)
 
 A **web screen** plays in any browser, such as a smart TV, signage browser, PC or tablet, straight from the server, without installing the client and without logging in. It is an ordinary screen in the admin panel: groups, *follow group*, playlists and the *reload* command all work. It **needs the network all the time** because nothing is cached. It cannot take screenshots or reboot.
@@ -275,10 +322,12 @@ server/            PHP application (upload this)
 client/            Go agent (stdlib only)
   web/               embedded player page (player.js/css copied by build.ps1)
   install/           install.sh, pipusher-kiosk.sh, uninstall.sh
+android/           Android app (Java, no libraries): manifest, res/, src/com/pipusher/client/
 image/             Raspberry Pi DietPi image
   dietpi/            first-boot scripts and pipusher.txt (copied to the boot partition)
   mkimage/           FAT boot partition editor (Go, go-diskfs)
 build.ps1          cross-compile + package
 build-image.ps1    DietPi SD card images (after build.ps1)
+build-android.ps1  Android APK, only when asked (downloads Java 17 + the Android SDK into tools/)
 setup-tools.ps1    download Go + PHP into tools/
 ```

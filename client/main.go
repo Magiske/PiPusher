@@ -33,6 +33,8 @@ type Config struct {
 	InsecureTLS     bool     `json:"insecure_tls"`     // accept self-signed server certificates
 	RebootCommand   []string `json:"reboot_command"`   // command run for the "reboot" remote command
 	DevToolsURL     string   `json:"devtools_url"`     // kiosk Chromium's remote debugging endpoint (screenshots)
+	ControlURL      string   `json:"control_url"`      // Android app showing the player: screenshots, restart, reboot
+	DNSFile         string   `json:"dns_file"`         // DNS servers, one per line (Android has no /etc/resolv.conf)
 }
 
 func defaultConfigPath() string {
@@ -138,6 +140,7 @@ func main() {
 		cfg.DataDir = *dataFlag
 	}
 	cfg.ServerURL = normaliseServerURL(cfg.ServerURL)
+	useDNSFile(cfg.DNSFile)
 
 	agent, err := NewAgent(cfg)
 	if err != nil {

@@ -147,6 +147,16 @@ func (a *Agent) captureAndUpload(ctx context.Context, path string, onlyPlayer bo
 
 // capture returns a JPEG of the player page, scaled down and turned upright for portrait layouts.
 func (a *Agent) capture(ctx context.Context, onlyPlayer bool, area []float64) ([]byte, error) {
+	if a.controlled() {
+		data, err := a.controlCapture(ctx, onlyPlayer, area)
+		if err != nil {
+			return nil, err
+		}
+		if rot := a.currentRotation(); rot != 0 {
+			return rotateJPEG(data, rot)
+		}
+		return data, nil
+	}
 	wsURL, err := a.findPlayerTarget(ctx)
 	if err != nil {
 		return nil, err

@@ -42,6 +42,9 @@ func (a *Agent) selfUpdate(ctx context.Context) {
 }
 
 func (a *Agent) doUpdate(ctx context.Context) error {
+	if a.controlled() {
+		return errors.New("Android: install the new PiPusher app (APK) on the device")
+	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 	u := fmt.Sprintf("%sapi.php?action=client&os=%s&arch=%s&go=%s", a.cfg.ServerURL,

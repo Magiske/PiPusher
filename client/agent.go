@@ -401,6 +401,12 @@ func (a *Agent) runCommand(ctx context.Context, cmd string) {
 	case "reboot":
 		go func() {
 			time.Sleep(2 * time.Second)
+			if a.controlled() {
+				if _, err := a.controlCall(ctx, http.MethodPost, "reboot"); err != nil {
+					log.Printf("reboot failed: %v", err)
+				}
+				return
+			}
 			c := a.cfg.RebootCommand
 			if out, err := exec.Command(c[0], c[1:]...).CombinedOutput(); err != nil {
 				log.Printf("reboot failed: %v %s", err, out)
