@@ -12,9 +12,12 @@ import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkRequest;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
+import android.webkit.CookieManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -23,9 +26,12 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Keeps the PiPusher agent (the Go client, shipped as libpipusher.so) running in the background, keeps its DNS
@@ -259,6 +265,9 @@ public class AgentService extends Service {
                     case "/reboot":
                         body = reboot().getBytes("UTF-8");
                         break;
+                    case "/cookies":
+                        body = setCookies(query).getBytes("UTF-8");
+                        break;
                     default:
                         code = 404;
                         body = "not found".getBytes("UTF-8");
@@ -282,6 +291,34 @@ public class AgentService extends Service {
         int c;
         while ((c = in.read()) >= 0 && c != '\n') if (c != '\r') sb.append((char) c);
         return c < 0 && sb.length() == 0 ? null : sb.toString();
+    }
+
+    /**
+     * Cookies for a web page from the agent (url=<page>&set=<Set-Cookie lines>), e.g. an accepted cookie banner, so the
+     * page shows without it. They go into the built-in player's cookie store; another browser keeps its own.
+     */
+    private String setCookies(String query) throws Exception {
+        String page = null, set = "";
+        for (String kv : query.split("&")) {
+            int eq = kv.indexOf('=');
+            if (eq < 0) continue;
+            String k = kv.substring(0, eq), v = URLDecoder.decode(kv.substring(eq + 1), "UTF-8");
+            if (k.equals("url")) page = v;
+            else if (k.equals("set")) set = v;
+        }
+        if (page == null) throw new Exception("url missing");
+        final String url = page;
+        final String[] lines = set.split("\n");
+        final CountDownLatch done = new CountDownLatch(1);
+        new Handler(Looper.getMainLooper()).post(() -> {
+            CookieManager cm = CookieManager.getInstance();
+            cm.setAcceptCookie(true);
+            for (String line : lines) if (!line.trim().isEmpty()) cm.setCookie(url, line);
+            cm.flush();
+            done.countDown();
+        });
+        if (!done.await(10, TimeUnit.SECONDS)) throw new Exception("cookie store did not answer");
+        return lines.length + " cookie(s) set for " + url;
     }
 
     /** The agent found the player stuck: a fresh WebView, or the player opened again in the browser. */

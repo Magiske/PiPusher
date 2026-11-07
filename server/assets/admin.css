@@ -59,6 +59,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); o
 input[type=color] { padding: 2px; height: 2.4rem; width: 4rem; }
 input.num { width: 6rem; }
 textarea.code { min-height: 60vh; resize: vertical; tab-size: 2; white-space: pre; }
+textarea.code.cookies { min-height: 0; white-space: pre-wrap; word-break: break-all; }
 
 .btn { display: inline-flex; align-items: center; gap: .3rem; font: inherit; font-weight: 500; padding: .5rem .95rem; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; text-decoration: none !important; }
 .btn:hover { border-color: var(--primary); }

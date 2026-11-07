@@ -266,6 +266,29 @@ function min_ini_bytes(): int
     return $limits ? min($limits) : 0;
 }
 
+/**
+ * Cookies for a web page (URL media) as [['name' => …, 'value' => …], …], from "name=value" lines or a pasted
+ * Cookie header ("a=1; b=2"). Set-Cookie attributes (Path, Domain, Expires, Secure…) are dropped; a repeated name
+ * keeps its last value.
+ */
+function parse_cookies(string $s): array
+{
+    $cookies = [];
+    foreach (preg_split('/[\r\n;]+/', $s) as $part) {
+        $part = trim($part);
+        if (!str_contains($part, '=')) {
+            continue;
+        }
+        [$name, $value] = array_map('trim', explode('=', $part, 2));
+        if (!preg_match('/^[!#$%&\'*+\-.^_`|~0-9A-Za-z]{1,200}$/', $name)
+            || preg_match('/^(path|domain|expires|max-age|samesite|secure|httponly|priority|partitioned)$/i', $name)) {
+            continue;
+        }
+        $cookies[$name] = substr(preg_replace('/[\x00-\x1f\x7f]/', '', $value), 0, 4000);
+    }
+    return array_map(fn($n, $v) => ['name' => (string)$n, 'value' => $v], array_keys($cookies), $cookies);
+}
+
 function human_size(int $bytes): string
 {
     $units = ['B', 'KB', 'MB', 'GB'];

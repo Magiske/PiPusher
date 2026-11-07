@@ -160,6 +160,7 @@ func main() {
 	}()
 	go agent.Run(ctx)
 	go agent.watchKiosk(ctx)
+	go agent.watchCookies(ctx)
 
 	select {
 	case <-ctx.Done():

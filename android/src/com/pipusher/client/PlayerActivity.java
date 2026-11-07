@@ -22,6 +22,7 @@ import android.view.MotionEvent;
 import android.view.PixelCopy;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -149,6 +150,10 @@ public class PlayerActivity extends Activity {
         }
         web = new WebView(this);
         web.setBackgroundColor(Color.BLACK);
+        // Web pages in zones are third-party to the player page: let them keep cookies (an accepted cookie banner
+        // stays accepted, and the cookies the agent sets for them are sent).
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
         web.setFocusable(false); // keys go to the activity (settings shortcuts), not the page
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);

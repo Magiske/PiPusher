@@ -32,12 +32,13 @@ type MediaFile struct {
 }
 
 type Media struct {
-	ID    int         `json:"id"`
-	Name  string      `json:"name"`
-	Type  string      `json:"type"` // html, image, video, url
-	Entry string      `json:"entry"`
-	URL   string      `json:"url"`
-	Files []MediaFile `json:"files"`
+	ID      int         `json:"id"`
+	Name    string      `json:"name"`
+	Type    string      `json:"type"` // html, image, video, url
+	Entry   string      `json:"entry"`
+	URL     string      `json:"url"`
+	Files   []MediaFile `json:"files"`
+	Cookies []Cookie    `json:"cookies,omitempty"` // web pages: set before showing them (accepted cookie banners)
 }
 
 // Payload is the part of the server's configuration the agent needs; the player reads the rest

@@ -24,6 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 flash('Invalid URL – not changed.', 'error');
             }
+            $cookies = parse_cookies((string)($_POST['cookies'] ?? ''));
+            x('UPDATE media SET cookies = ? WHERE id = ?',
+                [implode("\n", array_map(fn($c) => $c['name'] . '=' . $c['value'], $cookies)), $id]);
         }
         flash('Saved. Screens pick up the change on their next sync.');
     } elseif ($do === 'replace' && in_array($m['type'], ['image', 'video'], true) && ($_FILES['file']['error'] ?? 1) === UPLOAD_ERR_OK) {
@@ -61,6 +64,17 @@ page_header($m['name'], 'media');
     <label>Folder <select name="folder_id"><?= folder_options($m['folder_id'] ? (int)$m['folder_id'] : null) ?></select></label>
     <?php if ($m['type'] === 'url'): ?>
       <label>URL <input name="url" type="url" value="<?= h($m['url']) ?>" required></label>
+      <label>Cookies <span class="muted small">(optional, one per line: name=value)</span>
+        <textarea name="cookies" class="code cookies" rows="3" spellcheck="false" placeholder="CookieConsent=…"><?= h($m['cookies']) ?></textarea>
+      </label>
+      <p class="muted small">For a page that asks to accept cookies: screens set these cookies before showing it, so the
+        cookie banner does not appear. Open the page in Chrome or Edge, accept the banner, press F12 → <em>Application</em>
+        → <em>Cookies</em> → the site, and copy the consent cookie's name and value, for example <code>CookieConsent</code>
+        (Cookiebot), <code>OptanonConsent</code> and <code>OptanonAlertBoxClosed</code> (OneTrust) or
+        <code>euconsent-v2</code>. A pasted <code>Cookie:</code> header works too. Screens renew the cookies every day;
+        when the site asks again (often after 6–12 months), copy them again.
+        <?php if (str_starts_with(strtolower((string)$m['url']), 'http://')): ?><br><strong>Only https pages can take
+        cookies inside a layout zone.</strong><?php endif; ?></p>
     <?php endif; ?>
     <?php if ($m['type'] === 'html' && $entryPath && is_file($entryPath)): ?>
       <label>HTML <span class="muted small">(<?= h($m['entry']) ?><?= count($files) > 1 ? ', part of a ' . count($files) . '-file bundle' : '' ?>)</span>

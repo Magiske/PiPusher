@@ -249,6 +249,11 @@ function migrate(PDO $pdo): void
             // background and stop, 'hold' = stay on screen and stop.
             "ALTER TABLE playlist_items ADD COLUMN after TEXT NOT NULL DEFAULT 'repeat'",
         ],
+        18 => [
+            // Cookies a screen sets for a web page (URL media) before showing it, e.g. an accepted cookie banner:
+            // "name=value" lines.
+            "ALTER TABLE media ADD COLUMN cookies TEXT NOT NULL DEFAULT ''",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

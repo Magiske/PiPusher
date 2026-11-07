@@ -121,6 +121,9 @@ function media_data(array $ids): array
             'url' => $m['url'],
             'files' => $files,
         ];
+        if ($m['type'] === 'url' && ($cookies = parse_cookies((string)$m['cookies']))) {
+            $media[(string)$mid]['cookies'] = $cookies;
+        }
     }
     return $media;
 }
