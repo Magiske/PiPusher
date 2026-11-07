@@ -208,7 +208,8 @@ page_header($layout['name'], 'layouts');
       <div class="zone-stage-wrap">
         <div id="zone-stage" class="zone-stage <?= str_starts_with($layout['orientation'], 'portrait') ? 'portrait' : '' ?>" style="background:<?= h($layout['background']) ?>"></div>
         <p class="muted small">Drag zones to move them, drag the corner to resize. Values are % of the screen.
-          Where zones overlap, ▲ / ▼ under Layer puts a zone on top of or under the others; the editor shows them stacked as on the screen.</p>
+          Zones are listed by layer, layer 1 on top. Where zones overlap, ▲ / ▼ under Layer moves a zone up (on top of the zone above)
+          or down; the editor shows them stacked as on the screen.</p>
       </div>
       <div class="zone-list">
         <table class="table compact zone-table">

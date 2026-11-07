@@ -313,23 +313,26 @@
     renderAll();
   }
 
+  // Rows are listed by layer, top layer first (layer 1), so ▲ moves a zone up the list and on top of the one above.
   function renderRows() {
     rows.innerHTML = '';
     var order = stackOrder();
-    zones.forEach(function (z, i) {
+    order.slice().reverse().forEach(function (i) {
+      var z = zones[i];
       var pos = order.indexOf(i);
       var tr = document.createElement('tr');
+      tr.setAttribute('data-zone', i);
       if (i === selected) tr.className = 'selected';
       tr.innerHTML =
         '<td><input data-k="name" value="' + esc(z.name) + '"></td>' +
         ['x', 'y', 'w', 'h'].map(function (k) {
           return '<td><input data-k="' + k + '" type="number" step="0.5" min="0" max="100" value="' + z[k] + '"></td>';
         }).join('') +
-        '<td class="zone-layer"><button type="button" class="btn btn-sm" data-layer="1" title="Bring forward: on top of the zone above"' +
+        '<td class="zone-layer"><button type="button" class="btn btn-sm" data-layer="1" title="Move up: on top of the zone above"' +
           (pos === order.length - 1 ? ' disabled' : '') + '>▲</button>' +
-        '<button type="button" class="btn btn-sm" data-layer="-1" title="Send backward: under the zone below"' +
+        '<button type="button" class="btn btn-sm" data-layer="-1" title="Move down: under the zone below"' +
           (pos === 0 ? ' disabled' : '') + '>▼</button>' +
-        '<span class="muted small" title="1 = bottom, ' + order.length + ' = top">' + (pos + 1) + '</span></td>' +
+        '<span class="muted small" title="1 = top, ' + order.length + ' = bottom">' + (order.length - pos) + '</span></td>' +
         '<td><select data-k="fit">' + options(cfg.fits, z.fit || 'contain') + '</select></td>' +
         '<td><select data-k="transition">' + options(cfg.transitions, z.transition || 'fade') + '</select></td>' +
         '<td class="zone-timer"><input data-k="timer" type="checkbox" title="Progress bar at the bottom of the zone"' +
@@ -377,7 +380,7 @@
     selected = i;
     renderStage();
     if (rerenderRows !== false) renderRows();
-    else rows.querySelectorAll('tr').forEach(function (tr, j) { tr.className = j === i ? 'selected' : ''; });
+    else rows.querySelectorAll('tr').forEach(function (tr) { tr.className = +tr.getAttribute('data-zone') === i ? 'selected' : ''; });
   }
 
   function startDrag(e, i, mode) {
