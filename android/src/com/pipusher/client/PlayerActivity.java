@@ -5,9 +5,11 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
@@ -47,6 +49,7 @@ public class PlayerActivity extends Activity {
     private WebView web;
     private int taps;
     private long firstTap;
+    private int layoutWidth; // screen width in pixels the page is laid out for
 
     @Override
     protected void onCreate(Bundle b) {
@@ -72,6 +75,40 @@ public class PlayerActivity extends Activity {
         current = this;
         setRequestedOrientation(orientation(new Prefs(this).orientation()));
         immersive();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        new Prefs(this).setShowing(true);
+    }
+
+    @Override
+    protected void onStop() {
+        if (!isChangingConfigurations()) new Prefs(this).setShowing(false); // left for the settings or another app
+        super.onStop();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration c) {
+        super.onConfigurationChanged(c);
+        // Turned (orientation "follow the device", or the requested orientation taking effect): lay out again.
+        if (web != null && screenWidth() != layoutWidth) web.loadUrl(playerUrl());
+    }
+
+    private int screenWidth() {
+        Point p = new Point();
+        getWindowManager().getDefaultDisplay().getRealSize(p);
+        return p.x;
+    }
+
+    /**
+     * The player page, laid out in screen pixels (?vw=) like on a Pi: Android otherwise uses its larger units, and a TV
+     * at double density shows web pages in zones at twice their size.
+     */
+    private String playerUrl() {
+        layoutWidth = screenWidth();
+        return Prefs.PLAYER_URL + "?vw=" + layoutWidth;
     }
 
     @Override
@@ -119,11 +156,14 @@ public class PlayerActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false); // videos with sound start on their own
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        s.setUseWideViewPort(true);       // the page's viewport width (screen pixels, see playerUrl)...
+        s.setLoadWithOverviewMode(true);  // ...scaled to fill the screen
+        s.setSupportZoom(false);
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError e) {
                 // The agent is not up yet (first start, after a crash): try again shortly.
-                if (r.isForMainFrame()) ui.postDelayed(() -> { if (v == web) v.loadUrl(Prefs.PLAYER_URL); }, 3000);
+                if (r.isForMainFrame()) ui.postDelayed(() -> { if (v == web) v.loadUrl(playerUrl()); }, 3000);
             }
 
             @Override
@@ -138,7 +178,7 @@ public class PlayerActivity extends Activity {
             }
         });
         root.addView(web, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        web.loadUrl(Prefs.PLAYER_URL);
+        web.loadUrl(playerUrl());
     }
 
     /** A fresh WebView in the running player. False when the player is not open. */

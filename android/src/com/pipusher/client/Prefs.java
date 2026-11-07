@@ -40,6 +40,9 @@ final class Prefs {
     boolean home() { return sp.getBoolean("home", false); }
     String pin() { return sp.getString("pin", ""); }
     boolean configured() { return !server().isEmpty(); }
+    /** The built-in player is on screen (not left for the settings or another app). */
+    boolean showing() { return sp.getBoolean("showing", false); }
+    void setShowing(boolean on) { sp.edit().putBoolean("showing", on).apply(); }
 
     static String defaultName(Context c) {
         String n = null;

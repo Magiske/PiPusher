@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<script>
+// Android app (?vw=<screen width in pixels>): lay the page out in screen pixels like the Pi does, not in the
+// device's larger units (a TV at double density would show web pages in zones at twice their size).
+(function () {
+  var vw = /[?&]vw=(\d+)/.exec(location.search);
+  if (vw) document.querySelector('meta[name=viewport]').setAttribute('content', 'width=' + vw[1]);
+})();
+</script>
 <title>PiPusher</title>
 <link rel="stylesheet" href="player.css">
 </head>

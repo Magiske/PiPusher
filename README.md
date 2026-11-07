@@ -264,11 +264,13 @@ while the screen waits for approval. Later starts go straight to the player.
   system may stop the player.
 - **Built-in player:** a fullscreen WebView (Chrome's engine, updated through Android System WebView). Videos play
   with sound, the screen stays on, and a stuck player is restarted (Settings → browser restart time). Screenshots,
-  layout previews and page snapshots work.
+  layout previews and page snapshots work. Pages are laid out in screen pixels, as on a Pi: a 1920×1080 TV shows an
+  HTML page in a zone the same size as a 1080p Pi does, whatever the TV's display density.
 - **Another browser:** shows the player at `http://127.0.0.1:8090/` with its own address bar. It may block video
   sound until the screen is touched, and screenshots are not possible. A stuck player is opened again.
 - **Reboot** works on rooted devices only; on others it restarts the agent and the player.
-- **Update client** is not available: install the new APK over the old one (settings and cache are kept). The APK
+- **Update client** is not available: install the new APK over the old one (settings and cache are kept). After an
+  update the player comes back by itself only if it was on screen, so an update does not interrupt another app. The APK
   must be signed with the same key, `tools\android-release.jks`, which the first build created. Keep a copy of it.
 
 Inside the app, `libpipusher.so` is the Go agent. `arm64-v8a` is built for Android; `armeabi-v7a` and `x86_64` are
