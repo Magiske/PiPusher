@@ -27,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $cookies = parse_cookies((string)($_POST['cookies'] ?? ''));
             x('UPDATE media SET cookies = ? WHERE id = ?',
                 [implode("\n", array_map(fn($c) => $c['name'] . '=' . $c['value'], $cookies)), $id]);
+            $storage = parse_storage((string)($_POST['storage'] ?? ''));
+            x('UPDATE media SET storage = ? WHERE id = ?',
+                [implode("\n", array_map(fn($c) => $c['name'] . '=' . $c['value'], $storage)), $id]);
         }
         flash('Saved. Screens pick up the change on their next sync.');
     } elseif ($do === 'replace' && in_array($m['type'], ['image', 'video'], true) && ($_FILES['file']['error'] ?? 1) === UPLOAD_ERR_OK) {
@@ -75,6 +78,13 @@ page_header($m['name'], 'media');
         when the site asks again (often after 6–12 months), copy them again.
         <?php if (str_starts_with(strtolower((string)$m['url']), 'http://')): ?><br><strong>Only https pages can take
         cookies inside a layout zone.</strong><?php endif; ?></p>
+      <label>Local storage <span class="muted small">(optional, one per line: name=value)</span>
+        <textarea name="storage" class="code cookies" rows="2" spellcheck="false" placeholder="cookie-consent=accepted"><?= h($m['storage']) ?></textarea>
+      </label>
+      <p class="muted small">Some sites keep the accepted banner in local storage instead of a cookie: when the
+        <em>Cookies</em> list stays empty after accepting, look under F12 → <em>Application</em> → <em>Local
+        storage</em> → the site and copy the consent entry here, for example <code>cookie-consent=accepted</code>.
+        Screens set these entries for the page before showing it.</p>
     <?php endif; ?>
     <?php if ($m['type'] === 'html' && $entryPath && is_file($entryPath)): ?>
       <label>HTML <span class="muted small">(<?= h($m['entry']) ?><?= count($files) > 1 ? ', part of a ' . count($files) . '-file bundle' : '' ?>)</span>

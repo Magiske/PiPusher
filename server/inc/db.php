@@ -254,6 +254,11 @@ function migrate(PDO $pdo): void
             // "name=value" lines.
             "ALTER TABLE media ADD COLUMN cookies TEXT NOT NULL DEFAULT ''",
         ],
+        19 => [
+            // Local storage entries a screen sets for a web page (URL media), for sites that keep an accepted cookie
+            // banner there instead of in a cookie: "name=value" lines.
+            "ALTER TABLE media ADD COLUMN storage TEXT NOT NULL DEFAULT ''",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

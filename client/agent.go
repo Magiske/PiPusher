@@ -39,6 +39,7 @@ type Media struct {
 	URL     string      `json:"url"`
 	Files   []MediaFile `json:"files"`
 	Cookies []Cookie    `json:"cookies,omitempty"` // web pages: set before showing them (accepted cookie banners)
+	Storage []Cookie    `json:"storage,omitempty"` // web pages: local storage entries, likewise
 }
 
 // Payload is the part of the server's configuration the agent needs; the player reads the rest

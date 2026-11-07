@@ -18,17 +18,18 @@ import (
 // Cookies for web pages (URL media), set in the screen's browser before the pages are shown: typically an accepted
 // cookie banner copied from the admin's own browser, so a kiosk never shows the banner. On Pi and Windows they go in
 // through Chromium's DevTools, on Android through the app (control_url). They are set again when the content changes
-// and once a day, which also renews their expiry.
+// and once a day, which also renews their expiry. Local storage entries go along with them (storage.go).
 
 type Cookie struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
-// pageCookies is the cookies of one web page.
+// pageCookies is the cookies and local storage entries of one web page.
 type pageCookies struct {
 	URL     string
 	Cookies []Cookie
+	Storage []Cookie
 }
 
 func wantedCookies(config json.RawMessage) []pageCookies {
@@ -38,8 +39,8 @@ func wantedCookies(config json.RawMessage) []pageCookies {
 	}
 	var out []pageCookies
 	for _, m := range p.Media {
-		if m.Type == "url" && len(m.Cookies) > 0 && m.URL != "" {
-			out = append(out, pageCookies{m.URL, m.Cookies})
+		if m.Type == "url" && (len(m.Cookies) > 0 || len(m.Storage) > 0) && m.URL != "" {
+			out = append(out, pageCookies{m.URL, m.Cookies, m.Storage})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].URL < out[j].URL })
@@ -62,17 +63,21 @@ func (a *Agent) watchCookies(ctx context.Context) {
 		sum := sha256.Sum256(b)
 		key := hex.EncodeToString(sum[:])
 		if len(want) > 0 && (key != applied || time.Since(at) > 24*time.Hour) {
-			if err := a.setCookies(ctx, want); err != nil {
+			err := a.setCookies(ctx, want)
+			if err == nil {
+				err = a.setStorage(ctx, want)
+			}
+			if err != nil {
 				if err.Error() != failed { // the browser may not be up yet: log each new reason once
 					log.Printf("cookies: %v", err)
 					failed = err.Error()
 				}
 			} else {
-				n := 0
+				n, s := 0, 0
 				for _, p := range want {
-					n += len(p.Cookies)
+					n, s = n+len(p.Cookies), s+len(p.Storage)
 				}
-				log.Printf("cookies: %d set for %d web page(s)", n, len(want))
+				log.Printf("cookies: %d cookie(s) and %d local storage entries set for %d web page(s)", n, s, len(want))
 				applied, at, failed = key, time.Now(), ""
 			}
 		}
@@ -87,6 +92,9 @@ func (a *Agent) watchCookies(ctx context.Context) {
 func (a *Agent) setCookies(ctx context.Context, pages []pageCookies) error {
 	if a.controlled() {
 		for _, p := range pages {
+			if len(p.Cookies) == 0 {
+				continue
+			}
 			var lines []string
 			for _, c := range p.Cookies {
 				if line, ok := setCookieLine(p.URL, c); ok {
@@ -107,6 +115,9 @@ func (a *Agent) setCookies(ctx context.Context, pages []pageCookies) error {
 				list = append(list, dc)
 			}
 		}
+	}
+	if len(list) == 0 {
+		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

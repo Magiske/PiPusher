@@ -289,6 +289,27 @@ function parse_cookies(string $s): array
     return array_map(fn($n, $v) => ['name' => (string)$n, 'value' => $v], array_keys($cookies), $cookies);
 }
 
+/**
+ * Local storage entries for a web page (URL media) as [['name' => …, 'value' => …], …], from "name=value" lines.
+ * The value is everything after the first "=" (it may hold JSON); a repeated name keeps its last value.
+ */
+function parse_storage(string $s): array
+{
+    $items = [];
+    foreach (preg_split('/\r\n|\r|\n/', $s) as $line) {
+        if (!str_contains($line, '=')) {
+            continue;
+        }
+        [$name, $value] = explode('=', $line, 2);
+        $name = trim($name);
+        if ($name === '' || strlen($name) > 200) {
+            continue;
+        }
+        $items[$name] = substr(preg_replace('/[\x00-\x1f\x7f]/', '', trim($value)), 0, 16000);
+    }
+    return array_map(fn($n, $v) => ['name' => (string)$n, 'value' => $v], array_keys($items), $items);
+}
+
 function human_size(int $bytes): string
 {
     $units = ['B', 'KB', 'MB', 'GB'];

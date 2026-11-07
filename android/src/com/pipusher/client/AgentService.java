@@ -17,8 +17,17 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
+import android.text.TextUtils;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
+import org.json.JSONObject;
+
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -28,6 +37,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
@@ -268,6 +278,9 @@ public class AgentService extends Service {
                     case "/cookies":
                         body = setCookies(query).getBytes("UTF-8");
                         break;
+                    case "/storage":
+                        body = setStorage(query).getBytes("UTF-8");
+                        break;
                     default:
                         code = 404;
                         body = "not found".getBytes("UTF-8");
@@ -319,6 +332,63 @@ public class AgentService extends Service {
         });
         if (!done.await(10, TimeUnit.SECONDS)) throw new Exception("cookie store did not answer");
         return lines.length + " cookie(s) set for " + url;
+    }
+
+    /**
+     * Local storage entries for web pages from the agent (pages=<JSON {url: page}>), for sites that keep an accepted
+     * cookie banner there. A hidden WebView with the player's origin loads each url in an iframe and answers it itself
+     * with the page, which writes the entries; so they land where the site finds them inside a layout zone.
+     */
+    private String setStorage(String query) throws Exception {
+        String pages = null;
+        for (String kv : query.split("&")) {
+            int eq = kv.indexOf('=');
+            if (eq >= 0 && kv.substring(0, eq).equals("pages")) pages = URLDecoder.decode(kv.substring(eq + 1), "UTF-8");
+        }
+        if (pages == null) throw new Exception("pages missing");
+        final JSONObject serve = new JSONObject(pages);
+        StringBuilder host = new StringBuilder("<!doctype html><script>var left=" + serve.length()
+            + ";function loaded(){if(--left===0)PP.done()}</script>");
+        for (Iterator<String> it = serve.keys(); it.hasNext(); ) {
+            host.append("<iframe onload=\"loaded()\" src=\"").append(TextUtils.htmlEncode(it.next())).append("\"></iframe>");
+        }
+        final String hostPage = host.toString();
+        final CountDownLatch written = new CountDownLatch(1);
+        final WebView[] view = new WebView[1];
+        Handler main = new Handler(Looper.getMainLooper());
+        main.post(() -> {
+            WebView w = new WebView(this);
+            view[0] = w;
+            w.getSettings().setJavaScriptEnabled(true);
+            w.getSettings().setDomStorageEnabled(true);
+            w.addJavascriptInterface(new Object() {
+                @JavascriptInterface
+                public void done() {
+                    written.countDown();
+                }
+            }, "PP");
+            w.setWebViewClient(new WebViewClient() {
+                @Override
+                public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
+                    String u = r.getUrl().toString();
+                    int cut = u.indexOf('?');
+                    String page = serve.optString(cut < 0 ? u : u.substring(0, cut), null);
+                    if (page == null) return null;
+                    try {
+                        return new WebResourceResponse("text/html", "UTF-8", new ByteArrayInputStream(page.getBytes("UTF-8")));
+                    } catch (Exception e) {
+                        return null;
+                    }
+                }
+            });
+            w.loadDataWithBaseURL(Prefs.PLAYER_URL, hostPage, "text/html", "UTF-8", null);
+        });
+        boolean ok = written.await(20, TimeUnit.SECONDS);
+        main.post(() -> {
+            if (view[0] != null) view[0].destroy();
+        });
+        if (!ok) throw new Exception("local storage pages did not load");
+        return serve.length() + " local storage page(s) written";
     }
 
     /** The agent found the player stuck: a fresh WebView, or the player opened again in the browser. */
