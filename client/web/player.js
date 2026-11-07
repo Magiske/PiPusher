@@ -273,19 +273,28 @@
   };
 
   Sequencer.prototype.startAuto = function () {
+    var self = this;
     this.auto = true;
     this.base = this.shown ? this.shown.zones.map(function (z) { return z.passes; }) : [];
+    // Every zone already stopped (an item set to fade out, exit or hold): its content has ended.
+    var ended = this.shown && this.shown.zones.some(function (z) { return z.ended; });
+    if (ended && this.allDone()) this.timer = setTimeout(function () { self.next(); }, 1000);
+  };
+
+  // Each zone with content has played it once since the entry started, or has stopped for good.
+  Sequencer.prototype.allDone = function () {
+    var zones = this.shown.zones;
+    for (var i = 0; i < zones.length; i++) {
+      if (zones[i].items.length && !zones[i].ended && zones[i].passes <= (this.base[i] || 0)) return false;
+    }
+    return true;
   };
 
   // A zone finished a pass through its content. Returns true when the sequencer moved on to another
   // layout, so the zone keeps its last item on screen while it fades out.
   Sequencer.prototype.zoneDone = function (zone) {
     if (!this.auto || this.stopped || !this.shown) return false;
-    var zones = this.shown.zones;
-    if (zones.indexOf(zone) < 0) return false;
-    for (var i = 0; i < zones.length; i++) {
-      if (zones[i].items.length && zones[i].passes <= (this.base[i] || 0)) return false;
-    }
+    if (this.shown.zones.indexOf(zone) < 0 || !this.allDone()) return false;
     var before = this.shown;
     this.next();
     return this.shown !== before;
@@ -553,6 +562,7 @@
     this.timer = null;
     this.stopped = false;
     this.passes = 0;       // times the zone has played all its content
+    this.ended = false;    // stopped after an item set to fade out, exit or hold
     this.onPass = onPass;
     this.onReady = onReady;
     this.ready = false;    // shows its first item (or has nothing to show)
@@ -671,11 +681,32 @@
     }
   };
 
+  // The item's duration ran out: go on (Repeat), or stop the zone with the item faded out, cut away or held.
+  Zone.prototype.finish = function (it) {
+    var after = it.after || 'repeat';
+    if (after === 'repeat' || this.stopped) return this.next();
+    clearTimeout(this.timer);
+    this.runBar(0);
+    this.ended = true;
+    var node = this.cur;
+    if (node && node.pause) node.pause(); // a held video stops on its frame
+    if (node && after !== 'hold') {
+      this.cur = null;
+      if (after === 'fadeout') {
+        node.classList.add('pp-fadeout');
+        setTimeout(function () { node.remove(); }, 1200);
+      } else {
+        node.remove();
+      }
+    }
+    this.pass();
+  };
+
   Zone.prototype.schedule = function (it, m, node) {
     var self = this;
     // Items with an automatic duration (a video played to the end) have no timer bar.
     this.runBar(it.duration > 0 ? it.duration : 0);
-    var single = this.playableCount() === 1 && this.items.length === 1;
+    var single = this.playableCount() === 1 && this.items.length === 1 && (it.after || 'repeat') === 'repeat';
     if (m.type === 'url' && !node.ppSnapshot) {
       // Photograph the live page shortly before it moves on (at most 10 s after it appeared).
       requestSnapshot(this, node, m, Math.min(10000, Math.max(3000, (it.duration || 10) * 1000 - 2000)));
@@ -691,11 +722,11 @@
         });
         return;
       }
-      node.addEventListener('ended', function () { self.next(); });
-      this.timer = setTimeout(function () { self.next(); }, 4 * 3600 * 1000); // safety net
+      node.addEventListener('ended', function () { if (self.cur === node) self.finish(it); });
+      this.timer = setTimeout(function () { self.finish(it); }, 4 * 3600 * 1000); // safety net
       return;
     }
-    this.timer = setTimeout(function () { self.next(); }, Math.max(1, it.duration || 10) * 1000);
+    this.timer = setTimeout(function () { self.finish(it); }, Math.max(1, it.duration || 10) * 1000);
   };
 
   // Restarts the timer bar to fill over the given seconds; 0 hides it.

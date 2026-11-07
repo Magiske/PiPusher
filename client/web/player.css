@@ -17,6 +17,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
 .pp-slide.pp-in { transform: none; }
 .pp-slide.pp-in.pp-out { transform: translateX(-100%); }
 .pp-none.pp-out { opacity: 0; }
+/* An item set to "Fade out" after its duration, whatever the zone's transition. */
+.pp-item.pp-in.pp-fadeout { opacity: 0; transform: none; transition: opacity 1s ease; }
 
 .pp-message { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
   justify-content: center; text-align: center; color: #e8edf5; padding: 5vh 5vw; box-sizing: border-box;

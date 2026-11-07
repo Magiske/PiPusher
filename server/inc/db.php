@@ -244,6 +244,11 @@ function migrate(PDO $pdo): void
             // Per-screen daily reload: '' = the Settings time, 'off' = never, 'HH:MM' = this screen's own time.
             "ALTER TABLE devices ADD COLUMN reload_at TEXT NOT NULL DEFAULT ''",
         ],
+        17 => [
+            // After an item's duration: 'repeat' = go on (the zone loops), 'fadeout' / 'exit' = fade or cut to the
+            // background and stop, 'hold' = stay on screen and stop.
+            "ALTER TABLE playlist_items ADD COLUMN after TEXT NOT NULL DEFAULT 'repeat'",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

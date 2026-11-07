@@ -9,6 +9,8 @@ const PP_ORIENTATIONS = [
 ];
 const PP_FITS = ['contain' => 'Contain', 'cover' => 'Cover (crop)', 'fill' => 'Stretch'];
 const PP_TRANSITIONS = ['fade' => 'Fade', 'none' => 'None', 'slide' => 'Slide'];
+// What a zone does when an item's duration runs out: go on to the next item, or stop there.
+const PP_AFTER = ['repeat' => 'Repeat', 'fadeout' => 'Fade out', 'exit' => 'Exit', 'hold' => 'Hold'];
 const PP_COMMANDS = ['reload' => 'Reload player', 'sync' => 'Sync now', 'reboot' => 'Reboot device', 'screenshot' => 'Take screenshot', 'update' => 'Update client'];
 
 const PP_MIME = [
