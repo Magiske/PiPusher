@@ -275,7 +275,7 @@ while the screen waits for approval. Later starts go straight to the player.
   update the player comes back by itself only if it was on screen, so an update does not interrupt another app. The APK
   must be signed with the same key, `tools\android-release.jks`, which the first build created. Keep a copy of it.
 
-Inside the app, `libpipusher.so` is the Go agent. `arm64-v8a` is built for Android; `armeabi-v7a` and `x86_64` are
+Inside the app, `libpipusher.so` is the Go agent. `arm64-v8a` is built for Android; `armeabi-v7a`, `x86_64` and `x86` are
 static Linux builds with the `pipusher_android` tag. The app writes the agent's `pipusher.json` and runs the agent
 as a foreground service. That file also sets `control_url`, the app's control port `127.0.0.1:8091` for screenshots,
 restarts and reboots, and `dns_file`, because Android has no `/etc/resolv.conf`. **Show log** in the settings shows

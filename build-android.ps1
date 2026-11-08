@@ -13,6 +13,7 @@
     arm64-v8a     GOOS=android (no cgo needed)
     armeabi-v7a   GOOS=linux, GOARM=7  } Android builds for these need cgo (the NDK); static Linux builds run on
     x86_64        GOOS=linux           } Android too, with the pipusher_android tag (time zones, reports "android")
+    x86           GOOS=linux, 386      } (x86: 32-bit x86 boxes and the Android TV emulator images)
 
   Output:
     dist\pipusher-android-experimental-<ver>.apk   (the app is experimental)
@@ -80,7 +81,8 @@ New-Item -ItemType Directory -Force "$work\stage", "$work\gen", "$work\classes",
 $abis = @(
     @{ Abi = 'arm64-v8a'; GOOS = 'android'; GOARCH = 'arm64'; GOARM = '' },
     @{ Abi = 'armeabi-v7a'; GOOS = 'linux'; GOARCH = 'arm'; GOARM = '7' },
-    @{ Abi = 'x86_64'; GOOS = 'linux'; GOARCH = 'amd64'; GOARM = '' }
+    @{ Abi = 'x86_64'; GOOS = 'linux'; GOARCH = 'amd64'; GOARM = '' },
+    @{ Abi = 'x86'; GOOS = 'linux'; GOARCH = '386'; GOARM = '' }
 )
 $saved = @{ GOOS = $env:GOOS; GOARCH = $env:GOARCH; GOARM = $env:GOARM; CGO_ENABLED = $env:CGO_ENABLED }
 Push-Location "$root\client"
