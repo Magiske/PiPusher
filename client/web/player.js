@@ -237,6 +237,8 @@
     this.timer = null;
     this.auto = false;     // entry without a duration: move on once every zone has played its content once
     this.base = [];        // zone pass counts when the entry started
+    // Per entry, for its frequency: turns it had, its share of turns built up, when it last played.
+    this.turns = this.seq.map(function () { return { count: 0, credit: 0, last: Date.now() }; });
     this.stopped = false;
     this.next();
     // Re-check the rules regularly so time windows start and end on time.
@@ -306,21 +308,31 @@
     this.timer = null;
     this.auto = false;
     if (this.stopped) return;
+    if (this.idx >= 0) this.turns[this.idx].last = Date.now();
     var el = this.eligible();
-    if (!el.length) {
+    // The next allowed entry after the current one (wrapping round) whose frequency gives it this turn.
+    var order = el.filter(function (i) { return i > self.idx; }).concat(el.filter(function (i) { return i <= self.idx; }));
+    var pick = -1;
+    for (var k = 0; k < order.length && pick < 0; k++) {
+      if (this.due(order[k])) pick = order[k];
+    }
+    if (pick < 0) {
       this.idx = -1;
       if (this.cfg.fallback && this.layouts[this.cfg.fallback]) this.show(this.cfg.fallback);
       else this.show(null);
+      // Nothing has its turn yet: try again as soon as a timed entry is due (the ticker covers the rest).
+      var wait = Infinity;
+      el.forEach(function (i) {
+        var f = self.seq[i].frequency;
+        if (f && f.t) wait = Math.min(wait, self.turns[i].last + f.t * 1000 - Date.now());
+      });
+      if (wait < 15000) this.timer = setTimeout(function () { self.next(); }, Math.max(wait, 0) + 50);
       return;
-    }
-    var pick = el[0];
-    for (var k = 0; k < el.length; k++) {
-      if (el[k] > this.idx) { pick = el[k]; break; }
     }
     this.idx = pick;
     var e = this.seq[pick];
     this.show(e.layout);
-    if (el.length < 2) return;
+    if (el.length < 2 && !e.frequency) return;
     // The entry's time starts once its layout is on screen, not while it loads.
     var shown = this.shown;
     whenVisible(shown, function () {
@@ -328,6 +340,22 @@
       if (e.duration > 0) self.timer = setTimeout(function () { self.next(); }, e.duration * 1000);
       else self.startAuto();
     });
+  };
+
+  // Whether an entry plays on this turn. Frequency { t: seconds } = once that long has passed since it last played
+  // (or since the start); { n: 10 } = every 10th turn; { p: 50 } = that share of its turns, spread evenly.
+  Sequencer.prototype.due = function (i) {
+    var f = this.seq[i].frequency, s = this.turns[i];
+    if (!f) return true;
+    if (f.t) return Date.now() - s.last >= f.t * 1000;
+    s.count++;
+    if (f.n) return s.count % f.n === 0;
+    if (f.p) {
+      s.credit += f.p / 100;
+      if (s.credit < 0.999999) return false;
+      s.credit -= 1;
+    }
+    return true;
   };
 
   function whenVisible(shown, fn) {

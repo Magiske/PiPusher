@@ -17,6 +17,10 @@ function entry_fields(): array
     sort($days);
     $time = fn($k) => posted_time($k, ['' => '—']) ?? '';
     $date = fn($k) => posted_date($k) ?? '';
+    $freq = parse_frequency((string)($_POST['frequency'] ?? ''));
+    if ($freq === null) {
+        flash('Frequency not understood (use e.g. t60, %10 or 50%) – left empty.', 'error');
+    }
     return [
         // Empty = 0 = until the layout's content has played once (videos to the end).
         'duration' => trim((string)($_POST['duration'] ?? '')) === '' ? 0 : max(5, min(86400, (int)$_POST['duration'])),
@@ -26,6 +30,7 @@ function entry_fields(): array
         'date_from' => $date('date_from'),
         'date_to' => $date('date_to'),
         'yearly' => !empty($_POST['yearly']) ? 1 : 0,
+        'frequency' => format_frequency($freq ?? []),
     ];
 }
 
@@ -56,13 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($do === 'add' && $layoutOk((int)$_POST['layout_id'])) {
         $f = entry_fields();
         $pos = (int)(q1('SELECT MAX(position) AS m FROM playlist_entries WHERE playlist_id = ?', [$id])['m'] ?? -1) + 1;
-        x('INSERT INTO playlist_entries (playlist_id, layout_id, position, duration, days, time_from, time_to, date_from, date_to, yearly)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$id, (int)$_POST['layout_id'], $pos, ...array_values($f)]);
+        x('INSERT INTO playlist_entries (playlist_id, layout_id, position, duration, days, time_from, time_to, date_from, date_to, yearly, frequency)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$id, (int)$_POST['layout_id'], $pos, ...array_values($f)]);
         flash('Layout added to the playlist.');
     } elseif ($do === 'save' && ($e = entry_of_playlist((int)$_POST['entry_id'], $id)) && $layoutOk((int)$_POST['layout_id'])) {
         $f = entry_fields();
-        x('UPDATE playlist_entries SET layout_id = ?, duration = ?, days = ?, time_from = ?, time_to = ?, date_from = ?, date_to = ?, yearly = ?
-           WHERE id = ?', [(int)$_POST['layout_id'], ...array_values($f), $e['id']]);
+        x('UPDATE playlist_entries SET layout_id = ?, duration = ?, days = ?, time_from = ?, time_to = ?, date_from = ?, date_to = ?, yearly = ?,
+           frequency = ? WHERE id = ?', [(int)$_POST['layout_id'], ...array_values($f), $e['id']]);
         flash('Entry saved.');
     } elseif ($do === 'delete' && ($e = entry_of_playlist((int)$_POST['entry_id'], $id))) {
         x('DELETE FROM playlist_entries WHERE id = ?', [$e['id']]);
@@ -100,6 +105,8 @@ function entry_form_fields(array $e, array $layouts): string
       <label>Layout <select name="layout_id" required><?= layout_options($e['layout_id'] ?? '') ?></select></label>
       <label>Show for (seconds) <input type="number" name="duration" min="5" max="86400" value="<?= (int)($e['duration'] ?? 0) ?: '' ?>" placeholder="auto" class="num">
         <span class="muted small">empty = until its content has played once</span></label>
+      <label>Frequency <input name="frequency" value="<?= h((string)($e['frequency'] ?? '')) ?>" placeholder="every time" class="num" spellcheck="false">
+        <span class="muted small">e.g. t60, %10 or 50% (see below)</span></label>
       <fieldset class="days">
         <legend>Days <span class="muted small">(none = every day)</span></legend>
         <?php foreach ($dayNames as $n => $label): ?>
@@ -160,7 +167,7 @@ page_header($playlist['name'], 'playlists');
       <summary>
         <span class="entry-num"><?= $i + 1 ?></span>
         <span class="entry-main"><strong><?= h($e['layout_name']) ?></strong>
-          <span class="muted"><?= (int)$e['duration'] ? (int)$e['duration'] . ' s' : 'until content ends' ?> ·<span data-local-times><?= h(describe_when($e)) ?></span></span></span>
+          <span class="muted"><?= (int)$e['duration'] ? (int)$e['duration'] . ' s' : 'until content ends' ?><?= ($fq = describe_frequency((string)$e['frequency'])) ? ' · ' . h($fq) : '' ?> ·<span data-local-times><?= h(describe_when($e)) ?></span></span></span>
         <?php if ($active): ?><span class="badge badge-active">ACTIVE NOW</span><?php endif; ?>
         <span class="entry-actions">
           <?= post_button(['do' => 'move', 'dir' => 'up', 'entry_id' => $e['id']], '↑', 'btn btn-sm') ?>
@@ -198,6 +205,10 @@ page_header($playlist['name'], 'playlists');
   </form>
   <p class="muted small" data-local-times>Examples: <em>Mon–Fri 08:00–16:00</em> for opening hours · <em>1 Dec – 26 Dec, every year</em> for Christmas ·
     a single date range for an event.</p>
+  <p class="muted small"><strong>Frequency</strong> (empty = every time): <code>t60</code> plays it when 60 seconds have
+    passed since it last played (<code>t5m</code>, <code>t1h</code> work too), <code>%10</code> every 10th time its turn
+    comes, <code>50%</code> half of its turns (spread evenly). When it isn't its turn, the queue moves on to the next
+    layout; if no layout has its turn, the screen shows the fallback until one does.</p>
   <?php endif; ?>
 </div>
 <?php page_footer();

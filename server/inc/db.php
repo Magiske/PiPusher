@@ -259,6 +259,11 @@ function migrate(PDO $pdo): void
             // banner there instead of in a cookie: "name=value" lines.
             "ALTER TABLE media ADD COLUMN storage TEXT NOT NULL DEFAULT ''",
         ],
+        20 => [
+            // How often a playlist entry takes its turn: '' = every time, 't60' = when 60 seconds have passed since
+            // it last played, '%10' = every 10th time, '50%' = half the time (see parse_frequency).
+            "ALTER TABLE playlist_entries ADD COLUMN frequency TEXT NOT NULL DEFAULT ''",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

@@ -30,6 +30,9 @@ function content_payload(?int $layoutId, ?int $playlistId): ?array
                 'date_to' => $e['date_to'],
                 'yearly' => (bool)$e['yearly'],
             ];
+            if ($freq = parse_frequency((string)$e['frequency'])) {
+                $sequence[count($sequence) - 1]['frequency'] = $freq;
+            }
         }
         $fallback = $pl['fallback_layout_id'] ? (int)$pl['fallback_layout_id'] : null;
         if (!$sequence && !$fallback) {

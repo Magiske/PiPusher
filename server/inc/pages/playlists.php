@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         x('INSERT INTO playlists (name, fallback_layout_id, folder_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
             [$src['name'] . ' (copy)', $src['fallback_layout_id'], $src['folder_id'], now(), now()]);
         $newId = last_id();
-        x('INSERT INTO playlist_entries (playlist_id, layout_id, duration, position, days, time_from, time_to, date_from, date_to, yearly)
-           SELECT ?, layout_id, duration, position, days, time_from, time_to, date_from, date_to, yearly
+        x('INSERT INTO playlist_entries (playlist_id, layout_id, duration, position, days, time_from, time_to, date_from, date_to, yearly, frequency)
+           SELECT ?, layout_id, duration, position, days, time_from, time_to, date_from, date_to, yearly, frequency
            FROM playlist_entries WHERE playlist_id = ?', [$newId, $src['id']]);
         $pdo->commit();
         flash('Playlist duplicated.');

@@ -310,6 +310,54 @@ function parse_storage(string $s): array
     return array_map(fn($n, $v) => ['name' => (string)$n, 'value' => $v], array_keys($items), $items);
 }
 
+/**
+ * A playlist entry's frequency: "t60" / "T60" (seconds; "t5m", "t1h" also work) = when that long has passed since it
+ * last played, "%10" = every 10th time its turn comes, "50%" = that share of its turns. Returns ['t' => seconds],
+ * ['n' => every nth] or ['p' => percent], [] for empty (every time), or null when it can't be read.
+ */
+function parse_frequency(string $s): ?array
+{
+    $s = strtolower(str_replace(' ', '', trim($s)));
+    if ($s === '') {
+        return [];
+    }
+    if (preg_match('/^t(\d+)([smh]?)$/', $s, $m)) {
+        $secs = (int)$m[1] * ['' => 1, 's' => 1, 'm' => 60, 'h' => 3600][$m[2]];
+        return $secs >= 1 && $secs <= 7 * 86400 ? ['t' => $secs] : null;
+    }
+    if (preg_match('/^%(\d+)$/', $s, $m)) {
+        return (int)$m[1] >= 1 && (int)$m[1] <= 10000 ? ['n' => (int)$m[1]] : null;
+    }
+    if (preg_match('/^(\d+(?:[.,]\d+)?)%$/', $s, $m)) {
+        $p = (float)str_replace(',', '.', $m[1]);
+        return $p > 0 && $p <= 100 ? ['p' => $p] : null;
+    }
+    return null;
+}
+
+/** The stored form of a parsed frequency: "t60", "%10", "50%" or "". */
+function format_frequency(array $f): string
+{
+    return isset($f['t']) ? 't' . $f['t'] : (isset($f['n']) ? '%' . $f['n'] : (isset($f['p']) ? $f['p'] . '%' : ''));
+}
+
+/** A frequency for people, e.g. "every 60 s", "every 10th time", "50% of the time"; '' for every time. */
+function describe_frequency(string $s): string
+{
+    $f = parse_frequency($s) ?? [];
+    if (isset($f['t'])) {
+        $t = $f['t'];
+        $span = $t % 3600 === 0 ? ($t / 3600) . ' h' : ($t % 60 === 0 ? ($t / 60) . ' min' : $t . ' s');
+        return 'every ' . $span;
+    }
+    if (isset($f['n'])) {
+        $n = $f['n'];
+        $suffix = in_array($n % 100, [11, 12, 13], true) ? 'th' : (['th', 'st', 'nd', 'rd'][$n % 10] ?? 'th');
+        return $n === 1 ? 'every time' : 'every ' . $n . $suffix . ' time';
+    }
+    return isset($f['p']) ? $f['p'] . '% of the time' : '';
+}
+
 function human_size(int $bytes): string
 {
     $units = ['B', 'KB', 'MB', 'GB'];
