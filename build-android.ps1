@@ -17,6 +17,7 @@
 
   Output:
     dist\pipusher-android-experimental-<ver>.apk   (the app is experimental)
+    dist\pipusher-android-experimental-<ver>.aab   (the same app as a bundle, for app stores)
 #>
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -142,5 +143,44 @@ $apk = Join-Path $dist "pipusher-android-experimental-$Version.apk"
 Invoke-Tool "$buildTools\apksigner.bat" @('sign', '--ks', $ks, '--ks-key-alias', 'pipusher', '--ks-pass', 'pass:pipusher',
     '--key-pass', 'pass:pipusher', '--out', $apk, "$work\aligned.apk") 'apksigner'
 Invoke-Tool "$buildTools\apksigner.bat" @('verify', $apk) 'APK verification'
+
+# ---------------------------------------------------------------- the app bundle (AAB, for app stores)
+# The same app as a bundle: resources linked again in protobuf format, laid out as a base module
+# (manifest/, res/, resources.pb, dex/, lib/), packed by bundletool and signed with jarsigner.
+# Native libraries stay compressed, so devices extract them: the app runs the agent as a file.
+$bundletool = Join-Path $tools 'bundletool-1.17.2.jar'
+if (-not (Test-Path $bundletool)) {
+    Write-Host 'Downloading bundletool 1.17.2'
+    Invoke-WebRequest 'https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar' -OutFile $bundletool
+}
+Write-Host 'Building the app bundle'
+Invoke-Tool $aapt2 @('link', '--proto-format', '-o', "$work\proto.zip", '-I', $androidJar, '--manifest', "$root\android\AndroidManifest.xml",
+    '--min-sdk-version', '21', '--target-sdk-version', '28', '--version-code', "$versionCode", '--version-name', $Version,
+    "$work\res.zip") 'aapt2 link (proto)'
+$module = [IO.Compression.ZipFile]::Open("$work\base.zip", 'Create')
+$proto = [IO.Compression.ZipFile]::OpenRead("$work\proto.zip")
+try {
+    foreach ($e in $proto.Entries) {
+        $name = if ($e.FullName -eq 'AndroidManifest.xml') { 'manifest/AndroidManifest.xml' } else { $e.FullName }
+        $out = $module.CreateEntry($name, 'Optimal').Open(); $in = $e.Open()
+        try { $in.CopyTo($out) } finally { $in.Dispose(); $out.Dispose() }
+    }
+    foreach ($f in Get-ChildItem $stage -Recurse -File) {
+        $name = $f.FullName.Substring($stage.Length + 1).Replace('\', '/')
+        if ($name -like '*.dex') { $name = "dex/$name" }
+        [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($module, $f.FullName, $name, 'Optimal')
+    }
+} finally {
+    $proto.Dispose(); $module.Dispose()
+}
+Set-Content "$work\BundleConfig.json" '{"optimizations":{"uncompressNativeLibraries":{"enabled":false}}}' -Encoding ascii
+$aab = Join-Path $dist "pipusher-android-experimental-$Version.aab"
+if (Test-Path $aab) { Remove-Item $aab }
+Invoke-Tool "$jdk\bin\java.exe" @('-jar', $bundletool, 'build-bundle', "--modules=$work\base.zip", "--config=$work\BundleConfig.json",
+    "--output=$aab") 'bundletool build-bundle'
+Invoke-Tool "$jdk\bin\jarsigner.exe" @('-keystore', $ks, '-storepass', 'pipusher', '-keypass', 'pipusher', '-sigalg', 'SHA256withRSA',
+    '-digestalg', 'SHA-256', $aab, 'pipusher') 'jarsigner'
+
 Remove-Item -Recurse -Force $work
-Get-Item $apk | ForEach-Object { Write-Host ("`nDone:`n  {0,-40} {1,12:N0} bytes" -f $_.Name, $_.Length) }
+Write-Host "`nDone:"
+Get-Item $apk, $aab | ForEach-Object { Write-Host ('  {0,-40} {1,12:N0} bytes' -f $_.Name, $_.Length) }
