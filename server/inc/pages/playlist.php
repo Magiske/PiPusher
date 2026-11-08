@@ -17,9 +17,10 @@ function entry_fields(): array
     sort($days);
     $time = fn($k) => posted_time($k, ['' => '—']) ?? '';
     $date = fn($k) => posted_date($k) ?? '';
-    $freq = parse_frequency((string)($_POST['frequency'] ?? ''));
+    $typed = (string)($_POST['frequency'] ?? '');
+    $freq = parse_frequency($typed);
     if ($freq === null) {
-        flash('Frequency not understood (use e.g. t60, %10 or 50%) – left empty.', 'error');
+        flash('Frequency not understood (use e.g. t60, f10 or 50%) – left empty.', 'error');
     }
     return [
         // Empty = 0 = until the layout's content has played once (videos to the end).
@@ -30,7 +31,7 @@ function entry_fields(): array
         'date_from' => $date('date_from'),
         'date_to' => $date('date_to'),
         'yearly' => !empty($_POST['yearly']) ? 1 : 0,
-        'frequency' => format_frequency($freq ?? []),
+        'frequency' => format_frequency($freq ?? [], $typed),
     ];
 }
 
@@ -106,7 +107,7 @@ function entry_form_fields(array $e, array $layouts): string
       <label>Show for (seconds) <input type="number" name="duration" min="5" max="86400" value="<?= (int)($e['duration'] ?? 0) ?: '' ?>" placeholder="auto" class="num">
         <span class="muted small">empty = until its content has played once</span></label>
       <label>Frequency <input name="frequency" value="<?= h((string)($e['frequency'] ?? '')) ?>" placeholder="every time" class="num" spellcheck="false">
-        <span class="muted small">e.g. t60, %10 or 50% (see below)</span></label>
+        <span class="muted small">e.g. t60, f10 or 50% (see below)</span></label>
       <fieldset class="days">
         <legend>Days <span class="muted small">(none = every day)</span></legend>
         <?php foreach ($dayNames as $n => $label): ?>
@@ -206,8 +207,8 @@ page_header($playlist['name'], 'playlists');
   <p class="muted small" data-local-times>Examples: <em>Mon–Fri 08:00–16:00</em> for opening hours · <em>1 Dec – 26 Dec, every year</em> for Christmas ·
     a single date range for an event.</p>
   <p class="muted small"><strong>Frequency</strong> (empty = every time): <code>t60</code> plays it when 60 seconds have
-    passed since it last played (<code>t5m</code>, <code>t1h</code> work too), <code>%10</code> every 10th time its turn
-    comes, <code>50%</code> half of its turns (spread evenly). When it isn't its turn, the queue moves on to the next
+    passed since it last played (<code>t5m</code>, <code>t1h</code> work too), <code>f10</code> (or <code>%10</code>) every
+    10th time its turn comes, <code>50%</code> half of its turns (spread evenly). When it isn't its turn, the queue moves on to the next
     layout; if no layout has its turn, the screen shows the fallback until one does.</p>
   <?php endif; ?>
 </div>

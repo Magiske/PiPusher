@@ -312,8 +312,8 @@ function parse_storage(string $s): array
 
 /**
  * A playlist entry's frequency: "t60" / "T60" (seconds; "t5m", "t1h" also work) = when that long has passed since it
- * last played, "%10" = every 10th time its turn comes, "50%" = that share of its turns. Returns ['t' => seconds],
- * ['n' => every nth] or ['p' => percent], [] for empty (every time), or null when it can't be read.
+ * last played, "f10" / "F10" or "%10" = every 10th time its turn comes, "50%" = that share of its turns. Returns
+ * ['t' => seconds], ['n' => every nth] or ['p' => percent], [] for empty (every time), or null when it can't be read.
  */
 function parse_frequency(string $s): ?array
 {
@@ -325,7 +325,7 @@ function parse_frequency(string $s): ?array
         $secs = (int)$m[1] * ['' => 1, 's' => 1, 'm' => 60, 'h' => 3600][$m[2]];
         return $secs >= 1 && $secs <= 7 * 86400 ? ['t' => $secs] : null;
     }
-    if (preg_match('/^%(\d+)$/', $s, $m)) {
+    if (preg_match('/^[%f](\d+)$/', $s, $m)) {
         return (int)$m[1] >= 1 && (int)$m[1] <= 10000 ? ['n' => (int)$m[1]] : null;
     }
     if (preg_match('/^(\d+(?:[.,]\d+)?)%$/', $s, $m)) {
@@ -335,10 +335,10 @@ function parse_frequency(string $s): ?array
     return null;
 }
 
-/** The stored form of a parsed frequency: "t60", "%10", "50%" or "". */
-function format_frequency(array $f): string
+/** The stored form of a parsed frequency: "t60", "f10" (or "%10", as $typed was written), "50%" or "". */
+function format_frequency(array $f, string $typed = ''): string
 {
-    return isset($f['t']) ? 't' . $f['t'] : (isset($f['n']) ? '%' . $f['n'] : (isset($f['p']) ? $f['p'] . '%' : ''));
+    return isset($f['t']) ? 't' . $f['t'] : (isset($f['n']) ? (stripos(ltrim($typed), 'f') === 0 ? 'f' : '%') . $f['n'] : (isset($f['p']) ? $f['p'] . '%' : ''));
 }
 
 /** A frequency for people, e.g. "every 60 s", "every 10th time", "50% of the time"; '' for every time. */
