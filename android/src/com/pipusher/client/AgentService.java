@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.Network;
@@ -131,7 +132,8 @@ public class AgentService extends Service {
         b.setContentTitle("PiPusher").setContentText("Player running. Tap for settings.")
             .setSmallIcon(android.R.drawable.ic_media_play).setOngoing(true)
             .setContentIntent(PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE));
-        startForeground(1, b.build());
+        if (Build.VERSION.SDK_INT >= 34) startForeground(1, b.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        else startForeground(1, b.build());
     }
 
     // ------------------------------------------------------------------ the agent process

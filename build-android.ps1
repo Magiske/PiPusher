@@ -4,7 +4,7 @@
 
     .\build-android.ps1
 
-  The first run downloads Java 17 and the Android SDK (platform 34, build tools 34.0.0) into tools\, which accepts
+  The first run downloads Java 17 and the Android SDK (platform 36, build tools 36.0.0) into tools\, which accepts
   Google's Android SDK license, and creates the signing key tools\android-release.jks. Keep a copy of that key:
   an installed app only takes updates signed with the same key (otherwise uninstall first, losing its settings).
 
@@ -35,12 +35,14 @@ $Version = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
 if ($Version -notmatch '^(\d+)\.(\d+)\.(\d+)$') { throw "VERSION must look like 1.2.3, got '$Version'" }
 $versionCode = [int]$Matches[1] * 10000 + [int]$Matches[2] * 100 + [int]$Matches[3]
 Write-Host "PiPusher for Android $Version ($versionCode)" -ForegroundColor Cyan
+# Google Play's minimum target for apps that also run on phones (Android 16); TV-only apps may target 34.
+$targetSdk = '36'
 
 # ---------------------------------------------------------------- tools
 $jdk = Join-Path $tools 'jdk17'
 $sdk = Join-Path $tools 'android-sdk'
-$buildTools = Join-Path $sdk 'build-tools\34.0.0'
-$androidJar = Join-Path $sdk 'platforms\android-34\android.jar'
+$buildTools = Join-Path $sdk 'build-tools\36.0.0'
+$androidJar = Join-Path $sdk 'platforms\android-36\android.jar'
 $dl = Join-Path $tools 'dl'
 if (-not (Test-Path "$jdk\bin\javac.exe")) {
     New-Item -ItemType Directory -Force $dl | Out-Null
@@ -61,10 +63,10 @@ if (-not (Test-Path $androidJar) -or -not (Test-Path "$buildTools\aapt2.exe")) {
         New-Item -ItemType Directory -Force "$sdk\cmdline-tools" | Out-Null
         Move-Item "$dl\clt\cmdline-tools" "$sdk\cmdline-tools\latest"
     }
-    Write-Host 'Installing Android platform 34 and build tools 34.0.0 (accepting the Android SDK license)'
+    Write-Host 'Installing Android platform 36 and build tools 36.0.0 (accepting the Android SDK license)'
     $ErrorActionPreference = 'Continue'
     ("y`n" * 20) | & $sdkmanager "--sdk_root=$sdk" --licenses 2>&1 | Out-Null
-    & $sdkmanager "--sdk_root=$sdk" 'platforms;android-34' 'build-tools;34.0.0' 2>&1 | Out-Null
+    & $sdkmanager "--sdk_root=$sdk" 'platforms;android-36' 'build-tools;36.0.0' 2>&1 | Out-Null
     $ErrorActionPreference = 'Stop'
     if (-not (Test-Path $androidJar)) { throw 'Android SDK install failed' }
 }
@@ -106,7 +108,7 @@ $aapt2 = Join-Path $buildTools 'aapt2.exe'
 Write-Host 'Building the app'
 Invoke-Tool $aapt2 @('compile', '--dir', "$root\android\res", '-o', "$work\res.zip") 'aapt2 compile'
 Invoke-Tool $aapt2 @('link', '-o', "$work\base.apk", '-I', $androidJar, '--manifest', "$root\android\AndroidManifest.xml",
-    '--min-sdk-version', '21', '--target-sdk-version', '28', '--version-code', "$versionCode", '--version-name', $Version,
+    '--min-sdk-version', '21', '--target-sdk-version', $targetSdk, '--version-code', "$versionCode", '--version-name', $Version,
     '--java', "$work\gen", "$work\res.zip") 'aapt2 link'
 
 # Lambdas compile against the build tools' LambdaMetafactory stub; d8 turns them into plain classes.
@@ -155,7 +157,7 @@ if (-not (Test-Path $bundletool)) {
 }
 Write-Host 'Building the app bundle'
 Invoke-Tool $aapt2 @('link', '--proto-format', '-o', "$work\proto.zip", '-I', $androidJar, '--manifest', "$root\android\AndroidManifest.xml",
-    '--min-sdk-version', '21', '--target-sdk-version', '28', '--version-code', "$versionCode", '--version-name', $Version,
+    '--min-sdk-version', '21', '--target-sdk-version', $targetSdk, '--version-code', "$versionCode", '--version-name', $Version,
     "$work\res.zip") 'aapt2 link (proto)'
 $module = [IO.Compression.ZipFile]::Open("$work\base.zip", 'Create')
 $proto = [IO.Compression.ZipFile]::OpenRead("$work\proto.zip")

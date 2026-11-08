@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Insets;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
@@ -17,6 +18,7 @@ import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -140,6 +142,14 @@ public class SettingsActivity extends Activity {
 
         ScrollView sv = new ScrollView(this);
         sv.addView(col);
+        if (Build.VERSION.SDK_INT >= 35) {
+            // Android 15+ lays the page out under the status and navigation bars (and the keyboard): keep it clear of them.
+            sv.setOnApplyWindowInsetsListener((v, in) -> {
+                Insets i = in.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout() | WindowInsets.Type.ime());
+                v.setPadding(i.left, i.top, i.right, i.bottom);
+                return WindowInsets.CONSUMED;
+            });
+        }
         setContentView(sv);
         (prefs.configured() ? save : server).requestFocus();
     }

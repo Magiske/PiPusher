@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android 10+ only lets an app open its player at boot when it may draw over other apps. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -15,6 +16,16 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <!-- Android 11+ only lists other apps an app declares: the browsers the settings offer for the player. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="http" />
+        </intent>
+    </queries>
+
+    <!-- enableOnBackInvokedCallback="false": Android 16 still hands the player the Back key (kiosk, long press = settings). -->
     <application
         android:label="PiPusher"
         android:icon="@mipmap/ic_launcher"
@@ -22,6 +33,7 @@
         android:allowBackup="false"
         android:extractNativeLibs="true"
         android:usesCleartextTraffic="true"
+        android:enableOnBackInvokedCallback="false"
         android:theme="@android:style/Theme.Material">
 
         <!-- Opens the player once set up, the settings otherwise. -->
@@ -62,9 +74,15 @@
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density" />
 
+        <!-- Runs the agent all the time, which no other service type covers (Android 14+ needs a type). -->
         <service
             android:name=".AgentService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Digital signage player: keeps the screen's content in sync with its PiPusher server" />
+        </service>
 
         <receiver
             android:name=".BootReceiver"
