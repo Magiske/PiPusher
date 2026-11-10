@@ -194,6 +194,68 @@
     });
   }
 
+  // Text editor: lines can be added, moved and removed; the server renders the preview as you edit.
+  var textForm = document.querySelector('[data-text-editor]');
+  if (textForm) {
+    var lines = document.getElementById('text-lines');
+    var textPreview = document.getElementById('html-preview');
+    var shape = document.getElementById('text-shape');
+    var box = textPreview.parentNode;
+    var textBase = new URL(textPreview.getAttribute('src').replace(/[^\/]*$/, ''), location.href).href;
+    var textTimer = null;
+    var render = function () {
+      var fd = new FormData(textForm);
+      fd.set('do', 'render');
+      fd.delete('photo_file');
+      fetch(location.href, { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          textPreview.removeAttribute('src');
+          textPreview.srcdoc = html.replace('<head>', '<head><base href="' + textBase + '">');
+        });
+    };
+    var later = function () { clearTimeout(textTimer); textTimer = setTimeout(render, 250); };
+    var sync = function () {
+      lines.querySelectorAll('.text-line-row').forEach(function (row) {
+        row.setAttribute('data-style', row.querySelector('select[name="line_style[]"]').value);
+      });
+      textForm.querySelector('[data-photo-cover]').hidden = textForm.querySelector('[name="photo_mode"]').value !== 'cover';
+    };
+    var grow = function (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; };
+    textForm.addEventListener('input', function (e) {
+      if (e.target.tagName === 'TEXTAREA') grow(e.target);
+      sync(); later();
+    });
+    textForm.addEventListener('change', function () { sync(); later(); });
+    textForm.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-line]');
+      if (!b) return;
+      var act = b.getAttribute('data-line');
+      var row = b.closest('.text-line-row');
+      if (act === 'add') {
+        lines.appendChild(document.getElementById('text-line-template').content.cloneNode(true));
+        lines.lastElementChild.querySelector('textarea').focus();
+      } else if (act === 'up' && row.previousElementSibling) {
+        lines.insertBefore(row, row.previousElementSibling);
+      } else if (act === 'down' && row.nextElementSibling) {
+        lines.insertBefore(row.nextElementSibling, row);
+      } else if (act === 'remove') {
+        row.remove();
+      }
+      sync(); later();
+    });
+    textForm.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); textForm.submit(); }
+    });
+    var reshape = function () {
+      box.style.aspectRatio = shape.value;
+      box.style.width = 'min(100%, calc(70vh * ' + shape.value + '))'; // tall shapes stay on screen
+    };
+    shape.addEventListener('change', reshape);
+    lines.querySelectorAll('textarea').forEach(grow);
+    sync(); reshape();
+  }
+
   // Live screen status (online dot, last seen, thumbnails) on the Screens list and screen page.
   var liveList = document.querySelector('[data-live-list]');
   var liveRows = document.querySelectorAll('[data-device]');

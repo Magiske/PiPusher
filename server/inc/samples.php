@@ -10,67 +10,28 @@ function install_samples(): int
     x('INSERT INTO media_folders (name, created_at) VALUES (?, ?)', ['Samples', now()]);
     $folder = last_id();
 
-    // An HTML page with a photo from inc/samples next to it.
-    $page = function (string $name, string $html, string $photo) use ($folder): int {
-        $id = create_html_media($name, $html, $folder);
-        copy(__DIR__ . '/samples/' . $photo, media_dir($id) . '/' . $photo);
-        reindex_media($id);
-        return $id;
-    };
+    // The three slides are text items (see inc/text.php), so they can be changed in the text editor.
+    $line = fn(string $text, string $style, float $size = 1, string $color = '#ffffff', string $bg = '#ffffff')
+        => ['text' => $text, 'style' => $style, 'size' => $size, 'color' => $color, 'bg' => $bg];
+    $photo = fn(string $file) => __DIR__ . '/samples/' . $file;
 
-    // Shared look of the three slides in the main zone.
-    $slide = <<<'CSS'
-  html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
-  body{box-sizing:border-box;padding:0 8vw;display:flex;flex-direction:column;justify-content:center;background-size:cover;background-position:center}
-  small{font-size:3.2vh;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.75);font-weight:600}
-  b{font-size:11vh;line-height:1.05;margin:1.6vh 0 2.8vh;letter-spacing:-.02em}
-  span{font-size:3.8vh;color:rgba(255,255,255,.85)}
-  small,b,span{text-shadow:0 2px 12px rgba(0,0,0,.45)}
-CSS;
+    $welcome = create_text_media('Sample – Welcome', [
+        'bg1' => '#172f6e', 'bg2' => '#1e3a8a', 'photo_mode' => 'cover', 'shade' => 92, 'shade_fade' => true, 'shadow' => true,
+        'lines' => [$line('Welcome to', 'label'), $line('Harbour Café', 'title'), $line('Fresh coffee · open 07–18', 'text')],
+    ], $folder, $photo('cafe.jpg'));
 
-    $welcome = $page('Sample – Welcome', <<<HTML
-<!doctype html>
-<html><head><meta charset="utf-8"><style>
-$slide
-  body{background-image:linear-gradient(90deg,rgba(23,47,110,.92) 0%,rgba(30,58,138,.6) 45%,rgba(30,58,138,.05) 80%),url(cafe.jpg)}
-</style></head><body>
-  <small>Welcome to</small>
-  <b>Harbour Café</b>
-  <span>Fresh coffee · open 07–18</span>
-</body></html>
-HTML, 'cafe.jpg');
+    $special = create_text_media('Sample – Today\'s special', [
+        'bg1' => '#c2410c', 'bg2' => '#9f1239', 'angle' => 135, 'photo_mode' => 'right', 'photo_x' => 40, 'photo_y' => 55,
+        'shadow' => true,
+        'lines' => [$line('Today\'s special', 'label'), $line("Cinnamon bun\n+ coffee", 'title', 0.8),
+            $line('€ 6.50', 'badge', 1, '#9a3412', '#ffffff')],
+    ], $folder, $photo('special.jpg'));
 
-    $special = $page('Sample – Today\'s special', <<<HTML
-<!doctype html>
-<html><head><meta charset="utf-8"><style>
-$slide
-  body{padding:0;flex-direction:row;align-items:stretch;background:linear-gradient(135deg,#c2410c,#9f1239)}
-  .text{position:relative;z-index:1;flex:0 0 50%;box-sizing:border-box;padding:0 0 0 8vw;display:flex;flex-direction:column;justify-content:center}
-  .text b{font-size:9vh}
-  .price{display:inline-block;align-self:flex-start;background:#fff;color:#9a3412;font-weight:800;padding:1vh 2.4vh;border-radius:1.4vh;font-size:4.6vh;text-shadow:none}
-  .photo{flex:1;margin-left:-14%;background:url(special.jpg) 40% 55%/cover no-repeat;
-    -webkit-mask-image:linear-gradient(90deg,transparent,#000 30%);mask-image:linear-gradient(90deg,transparent,#000 30%)}
-</style></head><body>
-  <div class="text">
-    <small>Today's special</small>
-    <b>Cinnamon bun<br>+ coffee</b>
-    <span class="price">€ 6.50</span>
-  </div>
-  <div class="photo"></div>
-</body></html>
-HTML, 'special.jpg');
-
-    $music = $page('Sample – Live music', <<<HTML
-<!doctype html>
-<html><head><meta charset="utf-8"><style>
-$slide
-  body{background-image:linear-gradient(90deg,rgba(46,16,101,.85) 0%,rgba(76,29,149,.35) 50%,transparent 80%),url(music.jpg);background-position:60% 70%}
-</style></head><body>
-  <small>Friday from 20:00</small>
-  <b>Live music</b>
-  <span>Free entry · all welcome</span>
-</body></html>
-HTML, 'music.jpg');
+    $music = create_text_media('Sample – Live music', [
+        'bg1' => '#2e1065', 'bg2' => '#4c1d95', 'photo_mode' => 'cover', 'photo_x' => 60, 'photo_y' => 70, 'shade' => 85,
+        'shade_fade' => true, 'shadow' => true,
+        'lines' => [$line('Friday from 20:00', 'label'), $line('Live music', 'title'), $line('Free entry · all welcome', 'text')],
+    ], $folder, $photo('music.jpg'));
 
     $side = create_html_media('Sample – Clock & weather (online data, cached offline)', <<<'HTML'
 <!doctype html>

@@ -22,4 +22,5 @@ define('PP_PREVIEWS', PP_DATA . '/previews');
 require __DIR__ . '/db.php';
 require __DIR__ . '/functions.php';
 require __DIR__ . '/payload.php';
+require __DIR__ . '/text.php';
 require __DIR__ . '/totp.php';

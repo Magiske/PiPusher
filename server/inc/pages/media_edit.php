@@ -10,12 +10,38 @@ $entryPath = $m['entry'] ? media_dir($id) . '/' . $m['entry'] : null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $do = $_POST['do'] ?? '';
+    if ($do === 'render' && $m['type'] === 'text') {
+        // Live preview of the text editor: the page as it would be saved, with the current photo.
+        header('Content-Type: text/html; charset=utf-8');
+        echo text_media_html(text_design_from_post($_POST, text_media_design($m)['photo']));
+        exit;
+    }
     if ($do === 'save') {
         x('UPDATE media SET name = ?, folder_id = ?, updated_at = ? WHERE id = ?',
             [trim((string)$_POST['name']) ?: $m['name'], valid_folder_id($_POST['folder_id'] ?? null), now(), $id]);
         if ($m['type'] === 'html' && isset($_POST['content']) && $entryPath) {
             file_put_contents($entryPath, str_replace("\r\n", "\n", (string)$_POST['content']));
             reindex_media($id);
+        }
+        if ($m['type'] === 'text') {
+            $photo = text_media_design($m)['photo'];
+            $upload = $_FILES['photo_file'] ?? null;
+            if ($upload && $upload['error'] === UPLOAD_ERR_OK) {
+                $ext = strtolower(pathinfo((string)$upload['name'], PATHINFO_EXTENSION));
+                if (!in_array($ext, PP_IMAGE_EXT, true)) {
+                    flash('The photo must be an image file.', 'error');
+                } else {
+                    if ($photo !== '') {
+                        @unlink(media_dir($id) . '/' . $photo);
+                    }
+                    $photo = 'photo.' . $ext;
+                    move_uploaded_file($upload['tmp_name'], media_dir($id) . '/' . $photo);
+                }
+            } elseif (!empty($_POST['photo_remove']) && $photo !== '') {
+                @unlink(media_dir($id) . '/' . $photo);
+                $photo = '';
+            }
+            save_text_media($id, text_design_from_post($_POST, $photo));
         }
         if ($m['type'] === 'url') {
             $u = trim((string)($_POST['url'] ?? ''));
@@ -49,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect($back);
 }
 
-$uses = q('SELECT l.id, l.name AS layout, z.name AS zone FROM playlist_items p JOIN zones z ON z.id = p.zone_id
+$uses = q('SELECT l.id, l.name AS layout, l.orientation, z.name AS zone, z.w, z.h FROM playlist_items p JOIN zones z ON z.id = p.zone_id
            JOIN layouts l ON l.id = z.layout_id WHERE p.media_id = ? GROUP BY l.id, z.id', [$id]);
 $files = q('SELECT * FROM media_files WHERE media_id = ? ORDER BY path', [$id]);
 $src = $m['type'] === 'url' ? $m['url'] : 'media.php/' . $id . '/' . str_replace('%2F', '/', rawurlencode((string)$m['entry']));
@@ -60,7 +86,7 @@ page_header($m['name'], 'media');
   <a class="btn" href="<?= url(array_filter(['p' => 'media', 'folder' => $m['folder_id']])) ?>">← <?= $m['folder_id'] ? '📁 ' . h(media_folders()[(int)$m['folder_id']]['name'] ?? 'Media') : 'Media' ?></a>
 </div>
 
-<form method="post" class="<?= $m['type'] === 'html' ? 'editor-layout' : 'grid-2' ?>" id="media-form">
+<form method="post" class="<?= in_array($m['type'], ['html', 'text'], true) ? 'editor-layout' : 'grid-2' ?>" id="media-form"<?= $m['type'] === 'text' ? ' enctype="multipart/form-data" data-text-editor' : '' ?>>
   <?= csrf_field() ?><input type="hidden" name="do" value="save">
   <div class="card stack">
     <label>Name <input name="name" value="<?= h($m['name']) ?>" required></label>
@@ -92,10 +118,14 @@ page_header($m['name'], 'media');
       </label>
       <p class="muted small">Ctrl+S saves. The preview updates as you type.</p>
     <?php endif; ?>
+    <?php if ($m['type'] === 'text') require PP_ROOT . '/inc/pages/text_editor.php'; ?>
     <div class="row"><button class="btn btn-primary">Save</button></div>
   </div>
   <div class="card">
     <h2>Preview</h2>
+    <?php if ($m['type'] === 'text'): ?>
+      <label class="row">Shape <select id="text-shape"><?= text_shape_options($uses) ?></select></label>
+    <?php endif; ?>
     <div class="preview-box">
       <?php if ($m['type'] === 'image'): ?><img src="<?= h($src) ?>" alt="">
       <?php elseif ($m['type'] === 'video'): ?><video src="<?= h($src) ?>" controls muted></video>

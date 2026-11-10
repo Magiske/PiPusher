@@ -264,6 +264,10 @@ function migrate(PDO $pdo): void
             // it last played, '%10' = every 10th time, '50%' = half the time (see parse_frequency).
             "ALTER TABLE playlist_entries ADD COLUMN frequency TEXT NOT NULL DEFAULT ''",
         ],
+        21 => [
+            // Text media: the design made in the text editor (JSON, see inc/text.php), rendered to index.html.
+            "ALTER TABLE media ADD COLUMN design TEXT NOT NULL DEFAULT ''",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {
