@@ -25,7 +25,7 @@ function db_close(): void
 
 function ensure_data_dirs(): void
 {
-    foreach ([PP_DATA, PP_MEDIA, PP_SCREENS, PP_PREVIEWS] as $dir) {
+    foreach ([PP_DATA, PP_MEDIA, PP_SCREENS, PP_PREVIEWS, PP_FONTS] as $dir) {
         if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
             throw new RuntimeException("Cannot create data directory: $dir");
         }
@@ -267,6 +267,15 @@ function migrate(PDO $pdo): void
         21 => [
             // Text media: the design made in the text editor (JSON, see inc/text.php), rendered to index.html.
             "ALTER TABLE media ADD COLUMN design TEXT NOT NULL DEFAULT ''",
+        ],
+        22 => [
+            // Fonts uploaded for text media; the file is data/fonts/<id>.<ext> and is copied into each text item using it.
+            'CREATE TABLE fonts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                file TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            )',
         ],
     ];
     foreach ($migrations as $v => $statements) {

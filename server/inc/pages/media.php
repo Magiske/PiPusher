@@ -56,6 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($do === 'text_new') {
         $mid = create_text_media(trim((string)$_POST['name']) ?: 'New text', text_defaults(), $target);
         redirect(url(['p' => 'media_edit', 'id' => $mid]));
+    } elseif ($do === 'font_add') {
+        $file = $_FILES['font'] ?? null;
+        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+            flash('Choose a font file to upload.', 'error');
+        } elseif ($err = add_font($file['tmp_name'], (string)$file['name'], (string)($_POST['name'] ?? ''))) {
+            flash($err, 'error');
+        } else {
+            flash('Font added. Choose it under Font in a text item.');
+        }
+        redirect(url(['p' => 'media', 'type' => 'text']) . '#fonts');
+    } elseif ($do === 'font_delete') {
+        delete_font((int)$_POST['id']);
+        flash('Font removed. Text items using it keep it until they are saved with another font.');
+        redirect(url(['p' => 'media', 'type' => 'text']) . '#fonts');
     } elseif ($do === 'url_new') {
         $u = trim((string)($_POST['url'] ?? ''));
         if (!preg_match('#^https?://#i', $u) || !filter_var($u, FILTER_VALIDATE_URL)) {
@@ -179,7 +193,8 @@ page_header($current ? $current['name'] : 'Media', 'media');
       <?= csrf_field() ?><input type="hidden" name="do" value="text_new"><input type="hidden" name="folder_id" value="<?= $folderId ?>">
       <h3>New text</h3>
       <label>Name <input name="name" required placeholder="Today's special"></label>
-      <p class="muted small">Headings, text and price tags on a colour or a photo, laid out in a form: no HTML needed.</p>
+      <p class="muted small">Headings, text and price tags laid out in a form, no HTML needed. The text has no background,
+        so it can go in a zone on top of a picture or video.</p>
       <button class="btn btn-primary">Create and edit</button>
     </form>
     <form method="post" class="stack">
@@ -218,7 +233,7 @@ page_header($current ? $current['name'] : 'Media', 'media');
     <a class="thumb" href="<?= url(['p' => 'media_edit', 'id' => $m['id']]) ?>">
       <?php if ($m['type'] === 'image'): ?><img src="<?= h($src) ?>" loading="lazy" alt="">
       <?php elseif ($m['type'] === 'video'): ?><video src="<?= h($src) ?>#t=1" preload="metadata" muted></video>
-      <?php elseif ($m['type'] === 'html' || $m['type'] === 'text'): ?><iframe src="<?= h($src) ?>" loading="lazy" tabindex="-1" scrolling="no"></iframe>
+      <?php elseif ($m['type'] === 'html' || $m['type'] === 'text'): ?><iframe src="<?= h($src) ?>"<?= $m['type'] === 'text' ? ' style="background:#334155"' : '' ?> loading="lazy" tabindex="-1" scrolling="no"></iframe>
       <?php else: ?><span class="thumb-url">🔗 <?= h(parse_url((string)$m['url'], PHP_URL_HOST)) ?></span><?php endif; ?>
     </a>
     <div class="media-meta">
@@ -234,6 +249,30 @@ page_header($current ? $current['name'] : 'Media', 'media');
     </div>
   </div>
   <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php if ($filter === 'text'): $fonts = text_fonts(); ?>
+<div class="card" id="fonts">
+  <h2>Fonts for text</h2>
+  <p class="muted">Upload a font and choose it under <em>Font</em> in any text item. Screens get a copy of the font with
+    each text item, so it also works offline. Free fonts: <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a>
+    (download the family and upload the .ttf of the weight you want).</p>
+  <?php if ($fonts): ?>
+    <table class="table">
+      <tr><th>Font</th><th>File</th><th></th></tr>
+      <?php foreach ($fonts as $fid => $f): ?>
+        <tr><td><?= h($f['name']) ?></td><td class="muted small"><?= h(strtoupper(pathinfo($f['file'], PATHINFO_EXTENSION))) ?></td>
+          <td><?= post_button(['do' => 'font_delete', 'id' => $fid], 'Remove', 'btn btn-sm btn-danger', 'Remove this font? Text items using it keep it until they are saved with another font.') ?></td></tr>
+      <?php endforeach; ?>
+    </table>
+  <?php else: ?><p class="muted">No fonts uploaded yet.</p><?php endif; ?>
+  <form method="post" enctype="multipart/form-data" class="row wrap align-end">
+    <?= csrf_field() ?><input type="hidden" name="do" value="font_add">
+    <label>Font file <input type="file" name="font" required accept=".woff2,.woff,.ttf,.otf"></label>
+    <label>Name <input name="name" placeholder="Same as the file"></label>
+    <button class="btn btn-primary">Add font</button>
+  </form>
 </div>
 <?php endif; ?>
 

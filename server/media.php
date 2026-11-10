@@ -13,6 +13,11 @@ if (!is_logged_in()) {
 session_write_close();
 
 $info = $_SERVER['PATH_INFO'] ?? '';
+// Uploaded fonts, for the text editor's preview: media.php/fonts/<id>.<ext>
+if (preg_match('#^/fonts/(\d+\.[a-z0-9]+)$#', $info, $f) && is_file(PP_FONTS . '/' . $f[1])) {
+    send_file(PP_FONTS . '/' . $f[1]);
+    exit;
+}
 if (!preg_match('#^/(\d+)/(.+)$#', $info, $m)) {
     http_response_code(404);
     exit('Not found');

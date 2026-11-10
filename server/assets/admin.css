@@ -216,8 +216,8 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .text-line-row textarea { min-height: 2.2rem; resize: vertical; font: inherit; }
 .text-line-row:not([data-style="badge"]) .badge-only { visibility: hidden; }
 .text-line-tools { display: flex; gap: .15rem; }
-.text-photo-thumb { height: 64px; border-radius: 6px; }
 #media-form[data-text-editor] .preview-box { margin: 0 auto; }
+#media-form[data-text-editor] .preview-box iframe { background: transparent; }
 @media (max-width: 600px) { .text-line-row { grid-template-columns: 1fr 1fr 1fr; } .text-line-row textarea { grid-column: 1 / -1; } }
 
 @media (max-width: 700px) {

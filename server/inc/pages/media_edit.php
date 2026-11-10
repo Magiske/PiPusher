@@ -11,9 +11,11 @@ $entryPath = $m['entry'] ? media_dir($id) . '/' . $m['entry'] : null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $do = $_POST['do'] ?? '';
     if ($do === 'render' && $m['type'] === 'text') {
-        // Live preview of the text editor: the page as it would be saved, with the current photo.
+        // Live preview of the text editor: the page as it would be saved.
         header('Content-Type: text/html; charset=utf-8');
-        echo text_media_html(text_design_from_post($_POST, text_media_design($m)['photo']));
+        $design = text_design_from_post($_POST);
+        $font = text_design_font($design);
+        echo text_media_html($design, $font ? '../fonts/' . $font['file'] : null); // media.php/fonts/<file>
         exit;
     }
     if ($do === 'save') {
@@ -24,24 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             reindex_media($id);
         }
         if ($m['type'] === 'text') {
-            $photo = text_media_design($m)['photo'];
-            $upload = $_FILES['photo_file'] ?? null;
-            if ($upload && $upload['error'] === UPLOAD_ERR_OK) {
-                $ext = strtolower(pathinfo((string)$upload['name'], PATHINFO_EXTENSION));
-                if (!in_array($ext, PP_IMAGE_EXT, true)) {
-                    flash('The photo must be an image file.', 'error');
-                } else {
-                    if ($photo !== '') {
-                        @unlink(media_dir($id) . '/' . $photo);
-                    }
-                    $photo = 'photo.' . $ext;
-                    move_uploaded_file($upload['tmp_name'], media_dir($id) . '/' . $photo);
-                }
-            } elseif (!empty($_POST['photo_remove']) && $photo !== '') {
-                @unlink(media_dir($id) . '/' . $photo);
-                $photo = '';
-            }
-            save_text_media($id, text_design_from_post($_POST, $photo));
+            save_text_media($id, text_design_from_post($_POST));
         }
         if ($m['type'] === 'url') {
             $u = trim((string)($_POST['url'] ?? ''));
@@ -86,7 +71,7 @@ page_header($m['name'], 'media');
   <a class="btn" href="<?= url(array_filter(['p' => 'media', 'folder' => $m['folder_id']])) ?>">← <?= $m['folder_id'] ? '📁 ' . h(media_folders()[(int)$m['folder_id']]['name'] ?? 'Media') : 'Media' ?></a>
 </div>
 
-<form method="post" class="<?= in_array($m['type'], ['html', 'text'], true) ? 'editor-layout' : 'grid-2' ?>" id="media-form"<?= $m['type'] === 'text' ? ' enctype="multipart/form-data" data-text-editor' : '' ?>>
+<form method="post" class="<?= in_array($m['type'], ['html', 'text'], true) ? 'editor-layout' : 'grid-2' ?>" id="media-form"<?= $m['type'] === 'text' ? ' data-text-editor' : '' ?>>
   <?= csrf_field() ?><input type="hidden" name="do" value="save">
   <div class="card stack">
     <label>Name <input name="name" value="<?= h($m['name']) ?>" required></label>
@@ -124,7 +109,10 @@ page_header($m['name'], 'media');
   <div class="card">
     <h2>Preview</h2>
     <?php if ($m['type'] === 'text'): ?>
-      <label class="row">Shape <select id="text-shape"><?= text_shape_options($uses) ?></select></label>
+      <div class="row wrap">
+        <label class="row">Shape <select id="text-shape"><?= text_shape_options($uses) ?></select></label>
+        <label class="row" title="Only for the preview: on screens the text shows over whatever is under its zone">Behind the text <input type="color" id="text-backdrop" value="#334155"></label>
+      </div>
     <?php endif; ?>
     <div class="preview-box">
       <?php if ($m['type'] === 'image'): ?><img src="<?= h($src) ?>" alt="">

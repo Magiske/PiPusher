@@ -37,7 +37,7 @@ function backup_create(): string
         'site_name' => (string)setting('site_name', ''),
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     $zip->addFile($dbCopy, 'pipusher.sqlite');
-    foreach (['media' => PP_MEDIA, 'previews' => PP_PREVIEWS] as $prefix => $dir) {
+    foreach (['media' => PP_MEDIA, 'previews' => PP_PREVIEWS, 'fonts' => PP_FONTS] as $prefix => $dir) {
         if (!is_dir($dir)) {
             continue;
         }
@@ -101,7 +101,7 @@ function backup_restore(string $zipPath): array
                 continue;
             }
             $parts = explode('/', $name);
-            if (!preg_match('#^(backup\.json|pipusher\.sqlite|(media|previews)/.+)$#', $name)
+            if (!preg_match('#^(backup\.json|pipusher\.sqlite|(media|previews|fonts)/.+)$#', $name)
                 || str_contains($name, '\\') || array_intersect($parts, ['', '.', '..'])) {
                 throw new RuntimeException("Unexpected file in the backup: $name");
             }
@@ -141,7 +141,7 @@ function backup_restore(string $zipPath): array
     rrmdir($old);
     mkdir($old, 0775, true);
     rename(PP_DATA . '/pipusher.sqlite', $old . '/pipusher.sqlite');
-    foreach (['media' => PP_MEDIA, 'previews' => PP_PREVIEWS, 'screenshots' => PP_SCREENS] as $n => $dir) {
+    foreach (['media' => PP_MEDIA, 'previews' => PP_PREVIEWS, 'screenshots' => PP_SCREENS, 'fonts' => PP_FONTS] as $n => $dir) {
         if (is_dir($dir)) {
             rename($dir, "$old/$n");
         }

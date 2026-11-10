@@ -206,7 +206,6 @@
     var render = function () {
       var fd = new FormData(textForm);
       fd.set('do', 'render');
-      fd.delete('photo_file');
       fetch(location.href, { method: 'POST', body: fd, credentials: 'same-origin' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -219,8 +218,12 @@
       lines.querySelectorAll('.text-line-row').forEach(function (row) {
         row.setAttribute('data-style', row.querySelector('select[name="line_style[]"]').value);
       });
-      textForm.querySelector('[data-photo-cover]').hidden = textForm.querySelector('[name="photo_mode"]').value !== 'cover';
     };
+    // The text is transparent: show it over a colour of your choice (preview only, not saved).
+    var backdrop = document.getElementById('text-backdrop');
+    var paint = function () { box.style.background = backdrop.value; };
+    backdrop.addEventListener('input', paint);
+    paint();
     var grow = function (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; };
     textForm.addEventListener('input', function (e) {
       if (e.target.tagName === 'TEXTAREA') grow(e.target);

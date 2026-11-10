@@ -18,6 +18,7 @@ define('PP_DATA', rtrim((string)$ppConfig['data_dir'], '/\\'));
 define('PP_MEDIA', PP_DATA . '/media');
 define('PP_SCREENS', PP_DATA . '/screenshots');
 define('PP_PREVIEWS', PP_DATA . '/previews');
+define('PP_FONTS', PP_DATA . '/fonts'); // uploaded fonts for text media
 
 require __DIR__ . '/db.php';
 require __DIR__ . '/functions.php';
