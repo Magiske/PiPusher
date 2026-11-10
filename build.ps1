@@ -7,7 +7,8 @@
     .\build.ps1 -Bump major      # 1.1.0 -> 2.0.0, then build
 
   The version is stamped into the server (server\inc\version.php), the client binaries and all
-  package names. Builds of other versions already in .\dist are kept.
+  package names. .\dist keeps the builds of this version and the 4 versions before it; older ones
+  are deleted (they stay on the GitHub releases).
 
   Output:
     dist\pipusher-client-<ver>.tar.gz          copy to the Pi, unpack, run install.sh (also contains windows\)
@@ -55,6 +56,13 @@ $work = Join-Path $dist '_build'
 New-Item -ItemType Directory -Force $dist | Out-Null
 if (Test-Path $work) { Remove-Item -Recurse -Force $work }
 Get-ChildItem $dist -File -Filter "*-$Version.*" | Remove-Item -Force   # rebuild of the same version
+
+# Keep this version and the 4 before it in .\dist (older ones stay on the GitHub releases).
+$keep = 5
+$verOf = { param($name) if ($name -match '-(\d+)\.(\d+)\.(\d+)(\.|$)') { [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])" } }
+$versions = @(Get-ChildItem $dist | ForEach-Object { & $verOf $_.Name }) + [version]$Version | Sort-Object -Unique -Descending
+$kept = $versions | Select-Object -First $keep
+Get-ChildItem $dist | Where-Object { $v = & $verOf $_.Name; $v -and $kept -notcontains $v } | Remove-Item -Recurse -Force
 $pkgName = "pipusher-client-$Version"
 $pkg = Join-Path $work $pkgName
 New-Item -ItemType Directory -Force $pkg | Out-Null
