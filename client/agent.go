@@ -102,6 +102,7 @@ type Agent struct {
 	shotErr        string
 	shotMu         sync.Mutex // held while a screenshot is in progress
 	updErr         string
+	updatePending  bool // a new version runs that has not synced yet (see checkUpdate)
 	updMu          sync.Mutex    // held while a client update is in progress
 	restart        chan struct{} // closed after a client update: main exits so the new version starts
 	playing        Playing
@@ -214,6 +215,10 @@ func (a *Agent) Run(ctx context.Context) {
 		} else {
 			a.lastErr = ""
 			a.lastOK = time.Now()
+			if a.updatePending {
+				a.updatePending = false
+				commitUpdate(a.cfg.DataDir)
+			}
 		}
 		wait := a.interval
 		// Periodic screenshot; give the kiosk browser a minute to start after boot.

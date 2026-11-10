@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -89,8 +90,13 @@ func (a *Agent) doUpdate(ctx context.Context) error {
 		os.Remove(bin)
 		return fmt.Errorf("new client does not run here (%v): %s", err, strings.TrimSpace(string(out)))
 	}
-	if err := a.replaceExecutable(ctx, bin); err != nil {
+	backup, err := a.replaceExecutable(ctx, bin)
+	if err != nil {
 		return err
+	}
+	// Until the new version has synced once, the old one is kept so it can come back (see checkUpdate).
+	if err := writeJSONAtomic(updateGuardPath(a.cfg.DataDir), updateGuard{Backup: backup, From: version, To: newVersion}, 0o644); err != nil {
+		log.Printf("client update: cannot write the rollback guard: %v", err)
 	}
 	log.Printf("client update: version %s installed, restarting", newVersion)
 	go func() {
@@ -177,35 +183,65 @@ func writeFile(dst string, r io.Reader, mode os.FileMode) error {
 	return os.Chmod(dst, mode)
 }
 
-// replaceExecutable puts bin in place of the running binary. A running binary can be renamed
-// (also on Windows), so it is moved aside to .old; that file is removed at the next start.
-// /usr/local/bin belongs to root: there install.sh allows exactly the sudo install command below.
-func (a *Agent) replaceExecutable(ctx context.Context, bin string) error {
+func currentExecutable() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if p, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = p
+	}
+	return exe, nil
+}
+
+// replaceExecutable puts bin in place of the running binary and returns where the old one was kept.
+// A running binary can be renamed (also on Windows), so it is moved aside to .old.
+// /usr/local/bin belongs to root: there install.sh allows exactly the sudo install command below,
+// and the old binary is copied to the data directory first.
+func (a *Agent) replaceExecutable(ctx context.Context, bin string) (string, error) {
+	exe, err := currentExecutable()
+	if err != nil {
+		return "", err
 	}
 	old := exe + ".old"
 	os.Remove(old)
 	if err := os.Rename(exe, old); err == nil {
 		if err := moveFile(bin, exe); err != nil {
 			os.Rename(old, exe)
-			return err
+			return "", err
 		}
-		return nil
+		return old, nil
 	} else if runtime.GOOS == "windows" {
-		return err
+		return "", err
 	}
+	prev := filepath.Join(filepath.Dir(bin), "pipusher.prev")
+	if err := copyFile(exe, prev); err != nil {
+		return "", fmt.Errorf("keeping a copy of the running client: %w", err)
+	}
+	if err := sudoInstall(ctx, bin, exe); err != nil {
+		os.Remove(prev)
+		return "", err
+	}
+	os.Remove(bin)
+	return prev, nil
+}
+
+func sudoInstall(ctx context.Context, bin, exe string) error {
 	out, err := exec.CommandContext(ctx, "sudo", "-n", "/usr/bin/install", "-m", "0755", bin, exe).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("replacing %s: %v %s (install the client once more with install.sh to allow remote updates)",
 			exe, err, strings.TrimSpace(string(out)))
 	}
-	os.Remove(bin)
 	return nil
+}
+
+func copyFile(from, to string) error {
+	f, err := os.Open(from)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return writeFile(to, f, 0o755)
 }
 
 func moveFile(from, to string) error {
@@ -224,12 +260,114 @@ func moveFile(from, to string) error {
 	return os.Remove(from)
 }
 
-// removeOldExecutable cleans up after an update (the previous binary, moved aside).
-func removeOldExecutable() {
-	if exe, err := os.Executable(); err == nil {
-		if p, err := filepath.EvalSymlinks(exe); err == nil {
-			exe = p
+// ------------------------------------------------------------------ rollback of a bad update
+
+// updateGuard (update/pending.json) is written when a new version is put in place and removed after
+// its first successful sync. A new version that keeps stopping before that is swapped back for Backup.
+type updateGuard struct {
+	Backup    string    `json:"backup"`
+	From      string    `json:"from"`
+	To        string    `json:"to"`
+	Starts    int       `json:"starts"`
+	LastStart time.Time `json:"last_start"`
+}
+
+const (
+	rollbackStarts = 3               // starts allowed without a successful sync
+	rollbackWindow = 5 * time.Minute // starts further apart than this are not a crash loop
+)
+
+func updateGuardPath(dataDir string) string { return filepath.Join(dataDir, "update", "pending.json") }
+func rollbackNotePath(dataDir string) string { return filepath.Join(dataDir, "update", "rolled-back.txt") }
+
+// checkUpdate runs first at every start. It returns true when this start comes after a new version
+// was installed and has not synced yet. A version that has started too often in a row without syncing
+// is replaced by the previous one and the process exits, so systemd or the kiosk loop starts the old version.
+func checkUpdate(dataDir string) bool {
+	exe, _ := currentExecutable()
+	os.Remove(exe + ".bad")
+	var g updateGuard
+	b, err := os.ReadFile(updateGuardPath(dataDir))
+	if err != nil || json.Unmarshal(b, &g) != nil || g.To != version {
+		// No update pending, or this is the previous version again: nothing to watch.
+		os.Remove(updateGuardPath(dataDir))
+		if exe != "" && err != nil {
+			os.Remove(exe + ".old")
 		}
-		os.Remove(exe + ".old")
+		return false
 	}
+	if time.Since(g.LastStart) > rollbackWindow {
+		g.Starts = 0
+	}
+	g.Starts++
+	g.LastStart = time.Now()
+	if g.Starts <= rollbackStarts {
+		if err := writeJSONAtomic(updateGuardPath(dataDir), g, 0o644); err != nil {
+			log.Printf("client update: %v", err)
+		}
+		log.Printf("client update: version %s start %d, waiting for the first sync", version, g.Starts)
+		return true
+	}
+	log.Printf("client update: version %s stopped %d times before its first sync, going back to %s", version, g.Starts-1, g.From)
+	if err := rollback(dataDir, exe, g.Backup); err != nil {
+		log.Printf("client update: rollback failed: %v", err)
+		return true // keep running this version rather than nothing
+	}
+	note := fmt.Sprintf("version %s stopped %d times before it could sync, so version %s was put back", version, g.Starts-1, g.From)
+	_ = os.WriteFile(rollbackNotePath(dataDir), []byte(note), 0o644)
+	os.Remove(updateGuardPath(dataDir))
+	os.Exit(1)
+	return false
+}
+
+func rollback(dataDir, exe, backup string) error {
+	if exe == "" || backup == "" {
+		return errors.New("no previous version kept")
+	}
+	if _, err := os.Stat(backup); err != nil {
+		return err
+	}
+	if backup == exe+".old" {
+		if err := os.Rename(exe, exe+".bad"); err != nil {
+			return err
+		}
+		if err := os.Rename(backup, exe); err != nil {
+			os.Rename(exe+".bad", exe)
+			return err
+		}
+		return nil
+	}
+	// Root-owned binary: the sudoers rule only allows installing from update/pipusher.
+	bin := filepath.Join(dataDir, "update", "pipusher")
+	if err := copyFile(backup, bin); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := sudoInstall(ctx, bin, exe); err != nil {
+		return err
+	}
+	os.Remove(bin)
+	os.Remove(backup)
+	return nil
+}
+
+// commitUpdate is called after the first successful sync of a new version: the old one is not needed any more.
+func commitUpdate(dataDir string) {
+	var g updateGuard
+	if b, err := os.ReadFile(updateGuardPath(dataDir)); err == nil && json.Unmarshal(b, &g) == nil && g.Backup != "" {
+		os.Remove(g.Backup)
+	}
+	os.Remove(updateGuardPath(dataDir))
+	log.Printf("client update: version %s synced, previous version removed", version)
+}
+
+// takeRollbackNote returns (once) the message left by a rollback, for the screen page.
+func takeRollbackNote(dataDir string) string {
+	b, err := os.ReadFile(rollbackNotePath(dataDir))
+	if err != nil {
+		return ""
+	}
+	os.Remove(rollbackNotePath(dataDir))
+	return strings.TrimSpace(string(b))
 }

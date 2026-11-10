@@ -141,13 +141,15 @@ func main() {
 	}
 	cfg.ServerURL = normaliseServerURL(cfg.ServerURL)
 	useDNSFile(cfg.DNSFile)
+	updatePending := checkUpdate(cfg.DataDir) // may put the previous version back and exit
 
 	agent, err := NewAgent(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("version %s, server %q, data %s, player http://%s/", version, cfg.ServerURL, cfg.DataDir, cfg.Listen)
-	removeOldExecutable()
+	agent.updatePending = updatePending
+	agent.updErr = takeRollbackNote(cfg.DataDir)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
