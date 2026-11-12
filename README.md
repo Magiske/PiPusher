@@ -221,7 +221,7 @@ The installer:
 - starts the kiosk at every login
 - adds **PiPusher** and **Stop PiPusher** to the Start menu
 
-The kiosk script restarts Chrome or the agent if either exits, keeps the display on while it runs, and uses its own browser profile with the DevTools port on `127.0.0.1:9222` for screenshots. The **Reboot** command restarts the PC (`-NoReboot` disables this).
+The kiosk script restarts Chrome or the agent if either exits, restarts Chrome when it uses more than half the RAM (or a quarter while Windows is low on memory; 1.37.0 or newer, logged in `kiosk.log`), keeps the display on while it runs, and uses its own browser profile with the DevTools port on `127.0.0.1:9222` for screenshots. The **Reboot** command restarts the PC (`-NoReboot` disables this).
 
 | | |
 |---|---|

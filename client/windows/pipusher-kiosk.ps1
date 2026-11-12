@@ -118,6 +118,25 @@ function Repair-Preferences {
     }
 }
 
+# Restarts the player browser when it has grown so large that the PC runs out of memory (a web page that
+# leaks, or weeks without a reload): it uses over half the RAM, or over a quarter while less than 10% of
+# Windows' memory (RAM + page file) is free. Checked every minute, at most one restart per 30 minutes;
+# the loop starts the browser again within 5 seconds.
+$memCheckedAt = Get-Date
+$memRestartAt = [datetime]::MinValue
+function Test-BrowserMemory($procs) {
+    if (((Get-Date) - $script:memRestartAt).TotalMinutes -lt 30) { return }
+    try { $os = Get-CimInstance Win32_OperatingSystem } catch { return }
+    $ram = [double]$os.TotalVisibleMemorySize * 1KB
+    $free = [double]$os.FreeVirtualMemory * 1KB
+    $limit = [double]$os.TotalVirtualMemorySize * 1KB
+    $used = [double]($procs | Measure-Object -Property PrivatePageCount -Sum).Sum
+    if (-not ($used -gt 0.5 * $ram -or ($free -lt 0.1 * $limit -and $used -gt 0.25 * $ram))) { return }
+    Write-Log ('browser uses {0:N0} MB of {1:N0} MB RAM, {2:N0} MB memory free: restarting it' -f ($used / 1MB), ($ram / 1MB), ($free / 1MB))
+    $script:memRestartAt = Get-Date
+    $procs | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force } catch {} }
+}
+
 Write-Log "kiosk started: $Browser -> $url"
 Stop-Children   # leftovers from a kiosk that did not exit cleanly
 $agent = $null
@@ -127,9 +146,13 @@ try {
             if ($agent) { Write-Log 'agent exited, restarting (see logs\agent.log)' }
             $agent = Start-Agent
         }
-        if (-not (Test-Path $stopFlag) -and -not (Get-KioskBrowser)) {
+        $running = @(Get-KioskBrowser)
+        if (-not (Test-Path $stopFlag) -and -not $running) {
             Repair-Preferences
             Start-Process -FilePath $Browser -ArgumentList $browserArgs | Out-Null
+        } elseif ($running -and ((Get-Date) - $memCheckedAt).TotalSeconds -ge 60) {
+            $memCheckedAt = Get-Date
+            Test-BrowserMemory $running
         }
         Start-Sleep -Seconds 5
     }

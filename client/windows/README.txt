@@ -12,7 +12,9 @@ Install (in this folder, from a PowerShell window):
            -Dir PATH (default %LOCALAPPDATA%\PiPusher)
 
 The player opens full screen and starts again at every login. If the browser or the agent
-closes, it is restarted within a few seconds. While it runs, the display stays on.
+closes, it is restarted within a few seconds. The browser is also restarted when it uses more
+than half the PC's memory (or a quarter while Windows is low on memory). While it runs, the
+display stays on.
 
 Stop:      press the Windows key, then Start menu > PiPusher > Stop PiPusher
 Start:     Start menu > PiPusher > PiPusher
