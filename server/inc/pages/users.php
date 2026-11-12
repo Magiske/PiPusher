@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             x('INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)',
                 [$username, password_hash($password, PASSWORD_DEFAULT), $role, now()]);
             save_playlist_access(last_id());
+            log_info('User created: ' . $username, ['role' => $role]);
             flash("User \"$username\" created.");
         }
         redirect(url(['p' => 'users']));
@@ -55,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 x('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), $user['id']]);
             }
             save_playlist_access((int)$user['id']);
+            log_info('User saved: ' . $username, ['role' => $role, 'password_changed' => $password !== '']);
             flash("User \"$username\" saved.");
             redirect(url(['p' => 'users']));
         }
@@ -62,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($do === 'mfa_reset') {
         disable_mfa((int)$user['id']);
+        log_info('Two-factor authentication reset for ' . $user['username']);
         flash('Two-factor authentication turned off for "' . $user['username'] . '"' . (mfa_required($user)
             ? '. They must set it up again at their next login.' : '. They can set it up again under their account.'));
         redirect(url(['p' => 'users']));
@@ -73,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('There must be at least one administrator.', 'error');
         } else {
             x('DELETE FROM users WHERE id = ?', [$user['id']]);
+            log_info('User deleted: ' . $user['username']);
             flash('User "' . $user['username'] . '" deleted.');
         }
         redirect(url(['p' => 'users']));

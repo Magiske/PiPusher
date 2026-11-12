@@ -535,6 +535,7 @@ function csrf_field(): string
 function csrf_check(): void
 {
     if (!hash_equals(csrf_token(), (string)($_POST['csrf'] ?? ''))) {
+        log_warning('Form sent with an invalid token (expired session or cross-site request)', ['url' => $_SERVER['REQUEST_URI'] ?? '']);
         http_response_code(400);
         exit('Invalid form token. Go back, reload the page and try again.');
     }

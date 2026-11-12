@@ -25,9 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pending && isset($_POST['code'])) 
         }
         unset($_SESSION['mfa_pending']);
         login_user($user);
+        log_info('Logged in' . ($step !== null ? ' (two-factor)' : ' with a recovery code'), ['user' => $user['username']]);
         redirect(url());
     }
     $_SESSION['mfa_pending']['tries']++;
+    log_warning('Wrong two-factor code', ['user' => $user['username'], 'try' => $_SESSION['mfa_pending']['tries']]);
     usleep(500000);
     $error = 'Wrong code. Try again.';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
@@ -44,8 +46,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pending && isset($_POST['code'])) 
             redirect(url(['p' => 'login']));
         }
         login_user($user);
+        log_info('Logged in', ['user' => $user['username']]);
         redirect(url());
     }
+    log_warning('Failed login', ['user' => mb_substr(trim((string)($_POST['username'] ?? '')), 0, 60), 'known_user' => (bool)$user]);
     usleep(500000);
     $error = 'Wrong username or password.';
 }

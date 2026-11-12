@@ -21,6 +21,7 @@ function device_from_auth(): array
 {
     $auth = $_SERVER['HTTP_X_DEVICE_AUTH'] ?? '';
     if (!preg_match('/^([A-Za-z0-9-]{8,64}):([A-Za-z0-9]{16,128})$/', $auth, $m)) {
+        log_warning('API request without valid device credentials', ['action' => $_GET['action'] ?? '']);
         json_out(['error' => 'missing or malformed X-Device-Auth header'], 401);
     }
     return [$m[1], $m[2]];
@@ -52,11 +53,27 @@ if ($action === 'sync') {
             [$uuid, hash('sha256', $secret), random_code(), mb_substr($name, 0, 80), $keyOk ? 'approved' : 'pending',
              $defLayout, $defPlaylist, $defGroup, $defGroup ? 1 : 0, now()]);
         $device = q1('SELECT * FROM devices WHERE id = ?', [last_id()]);
+        log_info($keyOk ? 'New screen registered and approved with the registration key' : 'New screen registered, waiting for approval',
+            ['device' => log_device($device), 'client' => $info['client_version'], 'hostname' => $info['hostname'],
+             'key' => ($body['registration_key'] ?? '') === '' ? 'none' : ($keyOk ? 'right' : 'wrong')]);
     } elseif (!hash_equals($device['secret_hash'], hash('sha256', $secret))) {
+        log_warning('Sync with a wrong device secret', ['device' => log_device($device)]);
         json_out(['error' => 'device credentials do not match'], 403);
     } elseif ($device['status'] === 'pending' && $keyOk) {
         x("UPDATE devices SET status = 'approved' WHERE id = ?", [$device['id']]);
         $device['status'] = 'approved';
+        log_info('Screen approved with the registration key', ['device' => log_device($device)]);
+    }
+    if (!empty($device['last_seen']) && now() - (int)$device['last_seen'] > max(600, 10 * poll_interval())) {
+        log_info('Screen back online (last seen ' . time_ago((int)$device['last_seen']) . ')', ['device' => log_device($device)]);
+    }
+    if ($device['command']) {
+        log_info('Commands sent to the screen: ' . $device['command'], ['device' => log_device($device)]);
+    }
+    // A new error reported by the screen (it repeats it on every sync until the next success).
+    $prevError = (string)((json_decode((string)$device['info'], true) ?: [])['last_error'] ?? '');
+    if (!empty($info['last_error']) && (string)$info['last_error'] !== $prevError) {
+        log_warning('Screen reports: ' . mb_substr((string)$info['last_error'], 0, 500), ['device' => log_device($device)]);
     }
 
     x('UPDATE devices SET last_seen = ?, ip = ?, info = ?, command = NULL WHERE id = ?',
@@ -87,6 +104,8 @@ if ($action === 'sync') {
             $resp['preview_delay'] = layout_preview_delay();
         }
     }
+    log_debug('Sync: ' . $resp['status'] . (isset($resp['config']) ? ', new content sent' : ''),
+        ['device' => log_device($device), 'client' => $info['client_version'], 'version' => $resp['version'] ?? null]);
     json_out($resp);
 }
 
@@ -94,6 +113,7 @@ if ($action === 'file') {
     [$uuid, $secret] = device_from_auth();
     $device = q1('SELECT * FROM devices WHERE uuid = ?', [$uuid]);
     if (!$device || !hash_equals($device['secret_hash'], hash('sha256', $secret)) || $device['status'] !== 'approved') {
+        log_warning('File download refused (not an approved screen)', ['device' => $device ? log_device($device) : null]);
         json_out(['error' => 'not authorised'], 403);
     }
     $mediaId = (int)($_GET['media'] ?? 0);
@@ -101,8 +121,10 @@ if ($action === 'file') {
     $row = $path === null ? null : q1('SELECT * FROM media_files WHERE media_id = ? AND path = ?', [$mediaId, $path]);
     $abs = $row ? media_dir($mediaId) . '/' . $path : null;
     if (!$abs || !is_file($abs)) {
+        log_warning('Screen asked for a missing media file', ['device' => log_device($device), 'media' => $mediaId, 'path' => $_GET['path'] ?? '']);
         json_out(['error' => 'not found'], 404);
     }
+    log_debug('Media file sent', ['device' => log_device($device), 'media' => $mediaId, 'path' => $path]);
     send_file($abs);
 }
 
@@ -115,8 +137,10 @@ if ($action === 'client') {
     $file = client_package_for((string)($_GET['os'] ?? ''), (string)($_GET['arch'] ?? ''), (string)($_GET['go'] ?? ''));
     $d = client_downloads()[$file] ?? null;
     if (!$d || empty($d['path'])) {
+        log_warning('Client update asked for, but no package for ' . ($_GET['os'] ?? '') . '/' . ($_GET['arch'] ?? ''), ['device' => log_device($device)]);
         json_out(['error' => 'this server has no client package for ' . ($_GET['os'] ?? '') . '/' . ($_GET['arch'] ?? '')], 404);
     }
+    log_info('Client update ' . PP_VERSION . ' downloaded (' . $file . ')', ['device' => log_device($device)]);
     header('X-PiPusher-Version: ' . PP_VERSION);
     send_file($d['path']);
 }
@@ -126,6 +150,7 @@ function save_uploaded_jpeg(string $dest): void
 {
     $img = (string)file_get_contents('php://input', false, null, 0, 5 * 1024 * 1024 + 1);
     if (strlen($img) > 5 * 1024 * 1024 || !str_starts_with($img, "\xFF\xD8\xFF")) {
+        log_warning('Upload refused: not a JPEG of at most 5 MB', ['action' => $_GET['action'] ?? '', 'bytes' => strlen($img)]);
         json_out(['error' => 'expected a JPEG of at most 5 MB'], 400);
     }
     ensure_data_dirs();
@@ -141,6 +166,7 @@ if ($action === 'screenshot') {
     }
     save_uploaded_jpeg(screenshot_path((int)$device['id']));
     x('UPDATE devices SET screenshot_at = ? WHERE id = ?', [now(), $device['id']]);
+    log_debug('Screenshot received', ['device' => log_device($device)]);
     json_out(['ok' => true]);
 }
 
@@ -156,8 +182,10 @@ if ($action === 'preview') {
         json_out(['ok' => true, 'skipped' => 'no preview wanted for this layout']);
     }
     save_uploaded_jpeg(layout_preview_path($layoutId));
+    log_debug('Layout preview received', ['device' => log_device($device), 'layout' => $layoutId]);
     x('UPDATE layouts SET preview_at = ?, preview_hash = ? WHERE id = ?', [now(), layout_preview_hash_of($layoutId), $layoutId]);
     json_out(['ok' => true]);
 }
 
+log_debug('Unknown API action: ' . mb_substr((string)$action, 0, 60));
 json_out(['error' => 'unknown action', 'version' => PP_VERSION], 404);

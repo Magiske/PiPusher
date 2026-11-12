@@ -38,11 +38,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     continue;
                 }
                 if ($files['error'][$i] !== UPLOAD_ERR_OK) {
+                    log_warning("Upload of $name failed (PHP upload error {$files['error'][$i]})");
                     flash("Upload of $name failed (error {$files['error'][$i]}). The file may exceed upload_max_filesize.", 'error');
                     continue;
                 }
                 [$mid, $err] = import_upload($files['tmp_name'][$i], $name, $target);
-                $err ? flash($err, 'error') : $ok++;
+                if ($err) {
+                    log_warning("Upload of $name rejected: $err");
+                    flash($err, 'error');
+                } else {
+                    log_info('Media uploaded: ' . $name, ['media' => $mid, 'size' => (int)$files['size'][$i]]);
+                    $ok++;
+                }
             }
         } elseif (empty($_FILES) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
             flash('Upload too large for the PHP limits (post_max_size).', 'error');
@@ -80,7 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('Link added.');
         }
     } elseif ($do === 'delete') {
+        $gone = q1('SELECT name FROM media WHERE id = ?', [(int)$_POST['id']]);
         delete_media((int)$_POST['id']);
+        log_info('Media deleted: ' . ($gone['name'] ?? '#' . (int)$_POST['id']));
         flash('Media deleted.');
     } elseif ($do === 'move') {
         $ids = array_filter(array_map('intval', (array)($_POST['ids'] ?? [])));

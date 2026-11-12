@@ -121,6 +121,18 @@ Each user can turn on two-factor authentication (2FA) under their account (👤)
 - The upload is limited by PHP's `upload_max_filesize` and `post_max_size`, and the Settings card shows the limit. For a large media library, raise both limits in `php.ini` or `.user.ini`.
 - Screens keep working after a restore when the new server has the same address, because they authenticate with the device keys stored in the database. Use this to move PiPusher to another host.
 
+### Server log
+
+**Logs** in the admin panel (administrators) shows what happens on the server, newest first, with a level filter and a search box. It is kept in its own database, `data/logs.sqlite`, apart from `pipusher.sqlite`, so backups leave it out and a restore leaves it alone.
+
+| Level | What is logged |
+|---|---|
+| **Info** | logins and logouts, screens registering, approved, saved or removed, commands sent, client updates downloaded, a screen back online after a long time, settings, users, media uploads and deletions, backups and restores |
+| **Warning** | failed logins and two-factor codes, wrong device credentials, refused API requests, missing media files, failed uploads, backups or restores, a new error reported by a screen, invalid form tokens, PHP warnings and fatal errors |
+| **Debug** | every sync and web player poll, media file downloads, screenshots and layout previews, every admin page and form (field names only, never values), PHP notices |
+
+Debug is only stored while **Log debug messages** is ticked on the Logs page. It grows fast with many screens, so turn it on while looking into a problem. Entries are kept for 30 days by default (1–365, same page). **Clear log** deletes all entries.
+
 ## Raspberry Pi installation
 
 Raspberry Pi OS Bookworm or newer, **desktop** edition. Pi 3, 4, 5 and Zero 2 W are supported (armv6 Pi 1/Zero are not).
@@ -324,6 +336,7 @@ server/            PHP application (upload this)
   preview.php        layout preview using the real player
   media.php          media for previews (admin session)
   inc/totp.php       two-factor authentication (TOTP + recovery codes)
+  inc/log.php        server log (data/logs.sqlite; Logs page in inc/pages/logs.php)
   assets/qrcode.js   QR code generator for 2FA setup (qrcode-generator 1.4.4, MIT, Kazuhiko Arase)
   play.php           online web player (web screens, no login)
   download.php       client packages from downloads/ (admin session or registration key)

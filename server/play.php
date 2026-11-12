@@ -49,9 +49,15 @@ if (preg_match('#^/([a-f0-9]{32})/(\d+)/(.+)$#', $_SERVER['PATH_INFO'] ?? '', $m
 if (isset($_GET['key'])) {
     $webKey = (string)setting('web_key', '');
     if ($webKey === '' || !hash_equals($webKey, (string)$_GET['key'])) {
+        log_warning('Web player link with a wrong key opened');
         message_page('Invalid link', 'This web player link is not valid. Ask your PiPusher administrator for a new one.', 403);
     }
-    $d = web_screen((string)($_COOKIE[PP_WEB_COOKIE] ?? '')) ?? create_web_screen((string)($_GET['name'] ?? ''));
+    $d = web_screen((string)($_COOKIE[PP_WEB_COOKIE] ?? ''));
+    if (!$d) {
+        $d = create_web_screen((string)($_GET['name'] ?? ''));
+        log_info('Web screen added itself with the web player link', ['device' => log_device($d),
+            'user_agent' => mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 200)]);
+    }
     setcookie(PP_WEB_COOKIE, $d['web_token'], [
         'expires' => time() + 10 * 365 * 86400,
         'path' => rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/',
@@ -66,6 +72,7 @@ $d = web_screen((string)($_GET['screen'] ?? ''));
 
 if (($_GET['action'] ?? '') === 'state') {
     if (!$d) {
+        log_debug('Removed web screen still polling');
         json_out(['state' => 'removed', 'online' => true, 'poll_interval' => poll_interval()], 404);
     }
     $body = json_decode((string)file_get_contents('php://input'), true);
@@ -101,10 +108,12 @@ if (($_GET['action'] ?? '') === 'state') {
             }
         }
     }
+    log_debug('Web player poll: ' . $resp['state'] . (isset($resp['config']) ? ', new content sent' : ''), ['device' => log_device($d)]);
     json_out($resp);
 }
 
 if (!$d) {
+    log_debug('Web player link for a removed screen opened');
     message_page('Screen not found', 'This web screen does not exist (any more). Ask your PiPusher administrator for a new link.', 404);
 }
 $state = ['state' => 'pending', 'online' => true, 'code' => $d['code'], 'name' => $d['name']];
@@ -115,6 +124,7 @@ if ($d['status'] === 'approved') {
         : ['state' => 'nolayout', 'online' => true, 'name' => $d['name']];
 }
 $state['muted'] = (bool)$d['muted'];
+log_debug('Web player page loaded', ['device' => log_device($d), 'user_agent' => mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 200)]);
 $base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
 ?><!doctype html>
 <html lang="en">

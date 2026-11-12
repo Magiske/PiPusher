@@ -24,7 +24,7 @@ if ($problems) {
 start_session();
 
 $pages = ['devices', 'device', 'group', 'playlists', 'playlist', 'layouts', 'layout', 'media', 'media_edit', 'settings',
-    'users', 'account', 'login', 'logout', 'setup'];
+    'users', 'account', 'login', 'logout', 'setup', 'logs'];
 // Pages a playlist editor may open; everything else is administrators only.
 $editorPages = ['playlists', 'playlist', 'account', 'logout'];
 $p = $_GET['p'] ?? '';
@@ -46,6 +46,7 @@ if (!q1('SELECT id FROM users LIMIT 1')) {
         redirect(url(['p' => 'account']) . '#mfa');
     }
     if (!is_admin() && !in_array($p, $editorPages, true)) {
+        log_warning('Page denied to a playlist editor: ' . $p);
         deny('This page is for administrators. Your account can edit playlists.');
     }
 }
@@ -56,6 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect(url(['p' => $p]));
     }
     csrf_check();
+    // Field names only: values can hold passwords.
+    log_debug('Form sent: ' . $p . (isset($_POST['do']) ? ' / ' . $_POST['do'] : ''), ['fields' => array_keys($_POST)]);
+} else {
+    log_debug('Page opened: ' . $p, $_GET ? ['query' => $_GET] : []);
 }
 
 require __DIR__ . '/inc/pages/' . $p . '.php';

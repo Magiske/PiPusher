@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             set_setting('default_layout', (string)install_samples());
         }
         login_user($admin);
+        log_info('Setup: first administrator created', ['samples' => !empty($_POST['samples'])]);
         flash('PiPusher is ready. Install the client on a Raspberry Pi and it will appear here.');
         redirect(url());
     }

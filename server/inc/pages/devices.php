@@ -3,9 +3,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $do = $_POST['do'] ?? '';
     if ($do === 'approve') {
         x("UPDATE devices SET status = 'approved' WHERE id = ?", [(int)$_POST['id']]);
+        if ($d = q1('SELECT * FROM devices WHERE id = ?', [(int)$_POST['id']])) {
+            log_info('Screen approved', ['device' => log_device($d)]);
+        }
         flash('Screen approved.');
     } elseif ($do === 'web_new') {
         $d = create_web_screen((string)($_POST['name'] ?? ''));
+        log_info('Web screen created', ['device' => log_device($d)]);
         flash('Web screen created. Open its link in a browser on the screen.');
         redirect(url(['p' => 'device', 'id' => $d['id']]));
     } elseif ($do === 'group_new') {

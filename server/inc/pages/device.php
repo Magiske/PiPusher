@@ -16,9 +16,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $useGroup = $group && ($_POST['source'] ?? 'group') === 'group' ? 1 : 0;
         x('UPDATE devices SET name = ?, layout_id = ?, playlist_id = ?, group_id = ?, use_group_content = ?, status = ? WHERE id = ?',
             [trim((string)$_POST['name']) ?: $device['name'], $layout, $playlist, $group, $useGroup, $status, $id]);
+        log_info('Screen saved', ['device' => log_device($device), 'status' => $status, 'content' => $_POST['content'] ?? '', 'group' => $group]);
         flash('Screen saved. It picks up the change on its next sync.');
     } elseif ($do === 'command' && isset(PP_COMMANDS[$_POST['command'] ?? '']) && (!is_web_screen($device) || $_POST['command'] === 'reload')) {
         queue_command($id, $_POST['command']);
+        log_info('Command queued: ' . $_POST['command'], ['device' => log_device($device)]);
         if ($_POST['command'] !== 'screenshot') {
             flash('"' . PP_COMMANDS[$_POST['command']] . '" queued; it runs on the next sync.');
         }
@@ -41,9 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash($muted ? 'Sound muted; the screen goes quiet on its next sync.' : 'Sound on; the screen plays sound again from its next sync.');
     } elseif ($do === 'new_link' && is_web_screen($device)) {
         x('UPDATE devices SET web_token = ? WHERE id = ?', [random_token(16), $id]);
+        log_info('New web screen link created', ['device' => log_device($device)]);
         flash('New link created. The old link no longer works; open the new one on the screen.');
     } elseif ($do === 'delete') {
         x('DELETE FROM devices WHERE id = ?', [$id]);
+        log_info('Screen removed', ['device' => log_device($device)]);
         @unlink(screenshot_path($id));
         flash(is_web_screen($device) ? 'Web screen removed. Its link no longer works.'
             : 'Screen removed. If it is still running it registers again as a new pending screen.');

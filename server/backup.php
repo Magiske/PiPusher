@@ -19,7 +19,9 @@ session_write_close();
 
 try {
     $zip = backup_create();
+    log_info('Backup downloaded', ['size' => filesize($zip)]);
 } catch (RuntimeException $e) {
+    log_warning('Backup failed: ' . $e->getMessage());
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');
     exit('Backup failed: ' . $e->getMessage() . "\n");

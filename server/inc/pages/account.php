@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $do !== 'password') {
             x('UPDATE users SET totp_secret = ?, totp_last = ? WHERE id = ?', [$_SESSION['totp_setup'], $step, $me['id']]);
             unset($_SESSION['totp_setup']);
             $_SESSION['recovery_codes'] = new_recovery_codes((int)$me['id']);
+            log_info('Two-factor authentication turned on');
             flash('Two-factor authentication is on. From now on you enter a code from your app when you log in.');
         }
     } elseif ($do === 'mfa_off' && mfa_enabled($me)) {
@@ -32,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $do !== 'password') {
             flash('Wrong password or code. Two-factor authentication is still on.', 'error');
         } else {
             disable_mfa((int)$me['id']);
+            log_info('Two-factor authentication turned off');
             flash('Two-factor authentication is off.');
         }
     } elseif ($do === 'mfa_codes' && mfa_enabled($me)) {
@@ -46,12 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $do !== 'password') {
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!password_verify((string)($_POST['current'] ?? ''), $me['password_hash'])) {
+        log_warning('Password change: current password wrong');
         flash('Current password is wrong.', 'error');
     } elseif (strlen((string)($_POST['new'] ?? '')) < 8 || $_POST['new'] !== ($_POST['new2'] ?? '')) {
         flash('The new password must be at least 8 characters and match the repeat.', 'error');
     } else {
         x('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash((string)$_POST['new'], PASSWORD_DEFAULT), $me['id']]);
         session_regenerate_id(true);
+        log_info('Password changed');
         flash('Password changed.');
     }
     redirect(url(['p' => 'account']));

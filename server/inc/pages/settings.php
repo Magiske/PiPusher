@@ -19,13 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_setting('layout_preview_delay', (string)max(1, min(600, (int)($_POST['layout_preview_delay'] ?? 8))));
         $key = trim((string)($_POST['registration_key'] ?? ''));
         set_setting('registration_key', preg_replace('/[^A-Za-z0-9_-]/', '', $key));
+        log_info('Settings saved (screens)');
         flash('Settings saved.');
     } elseif ($do === 'regen_key') {
+        log_info('New registration key generated');
         set_setting('registration_key', random_code(10));
         flash('New registration key generated. Existing screens are not affected.');
     } elseif ($do === 'security') {
         $req = $_POST['require_mfa'] ?? '';
         set_setting('require_mfa', in_array($req, ['admins', 'all'], true) ? $req : '');
+        log_info('Security settings saved', ['require_mfa' => $req ?: 'nobody']);
         set_setting('site_name', mb_substr(trim(str_replace(':', '', (string)($_POST['site_name'] ?? ''))), 0, 60));
         flash('Settings saved.' . ($req !== '' ? ' Users without two-factor authentication must set it up before they can continue.' : ''));
     } elseif ($do === 'restore') {
@@ -38,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 $r = backup_restore($f['tmp_name']);
+                log_info('Backup restored', $r);
                 // The accounts now come from the backup: log in again.
                 unset($_SESSION['user_id'], $_SESSION['mfa_pending']);
                 session_regenerate_id(true);
@@ -46,11 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $r['layouts'], $r['playlists'], $r['devices'], $r['media'], $r['users']));
                 redirect(url(['p' => 'login']));
             } catch (RuntimeException $e) {
+                log_warning('Restore failed: ' . $e->getMessage());
                 flash('Restore failed, nothing was changed: ' . $e->getMessage(), 'error');
             }
         }
     } elseif ($do === 'web_key') {
         set_setting('web_key', ($_POST['enable'] ?? '') === '1' ? random_token(12) : '');
+        log_info(($_POST['enable'] ?? '') === '1' ? 'Web player link created' : 'Web player link turned off');
         flash(($_POST['enable'] ?? '') === '1'
             ? 'New web player link created. The old link no longer adds screens; existing web screens keep working.'
             : 'Web player link turned off. Existing web screens keep working.');

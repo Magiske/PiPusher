@@ -231,3 +231,15 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .steps { padding-left: 1.2rem; }
 .steps li { margin-bottom: .8rem; }
 .recovery-codes { font-size: 1.05rem; letter-spacing: .05em; }
+
+/* Logs page */
+.log-filter { flex-wrap: wrap; margin-bottom: .8rem; }
+.log-filter input[type=search] { flex: 1; min-width: 12rem; }
+.log-table td { vertical-align: top; font-size: .88rem; }
+.log-table .nowrap { white-space: nowrap; }
+.log-context { font-family: ui-monospace, Consolas, monospace; font-size: .75rem; word-break: break-all; }
+.log-pager { flex-wrap: wrap; margin-top: .8rem; }
+.badge-log-info { background: #e8efff; color: #2f5bd3; }
+.badge-log-warning { background: rgba(229,165,10,.18); color: #9a6a00; }
+.badge-log-debug { background: var(--border); color: var(--muted); }
+tr.log-warning td { background: rgba(229,165,10,.06); }
