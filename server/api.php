@@ -104,8 +104,9 @@ if ($action === 'sync') {
             $resp['preview_delay'] = layout_preview_delay();
         }
     }
-    log_debug('Sync: ' . $resp['status'] . (isset($resp['config']) ? ', new content sent' : ''),
-        ['device' => log_device($device), 'client' => $info['client_version'], 'version' => $resp['version'] ?? null]);
+    log_debug('Sync: ' . $resp['status'] . ', client ' . ($info['client_version'] ?: '?')
+        . (isset($resp['config']) ? ', new content sent (version ' . substr($resp['version'], 0, 8) . ')' : ''),
+        ['device' => log_device($device)]);
     json_out($resp);
 }
 
@@ -124,7 +125,7 @@ if ($action === 'file') {
         log_warning('Screen asked for a missing media file', ['device' => log_device($device), 'media' => $mediaId, 'path' => $_GET['path'] ?? '']);
         json_out(['error' => 'not found'], 404);
     }
-    log_debug('Media file sent', ['device' => log_device($device), 'media' => $mediaId, 'path' => $path]);
+    log_debug('Media file sent: #' . $mediaId . ' ' . $path, ['device' => log_device($device)]);
     send_file($abs);
 }
 
@@ -182,7 +183,7 @@ if ($action === 'preview') {
         json_out(['ok' => true, 'skipped' => 'no preview wanted for this layout']);
     }
     save_uploaded_jpeg(layout_preview_path($layoutId));
-    log_debug('Layout preview received', ['device' => log_device($device), 'layout' => $layoutId]);
+    log_debug('Layout preview received for layout #' . $layoutId, ['device' => log_device($device)]);
     x('UPDATE layouts SET preview_at = ?, preview_hash = ? WHERE id = ?', [now(), layout_preview_hash_of($layoutId), $layoutId]);
     json_out(['ok' => true]);
 }

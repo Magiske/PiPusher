@@ -58,9 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     csrf_check();
     // Field names only: values can hold passwords.
-    log_debug('Form sent: ' . $p . (isset($_POST['do']) ? ' / ' . $_POST['do'] : ''), ['fields' => array_keys($_POST)]);
+    log_debug('Form sent: ' . $p . (isset($_POST['do']) ? ' / ' . mb_substr((string)$_POST['do'], 0, 40) : ''));
 } else {
-    log_debug('Page opened: ' . $p, $_GET ? ['query' => $_GET] : []);
+    // Not the Logs page itself: reading the log would fill it. Other query values (an id, a filter) go into the message.
+    if ($p !== 'logs') {
+        $extra = array_diff_key(array_filter($_GET, 'is_scalar'), ['p' => 1]);
+        log_debug('Page opened: ' . $p . implode('', array_map(fn($k, $v) => ' ' . $k . '=' . mb_substr((string)$v, 0, 40),
+            array_keys($extra), $extra)));
+    }
 }
 
 require __DIR__ . '/inc/pages/' . $p . '.php';

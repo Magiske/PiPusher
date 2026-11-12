@@ -148,6 +148,22 @@ function log_device(array $device): string
     return ($device['name'] ?? '?') . ' (#' . ($device['id'] ?? '?') . ')';
 }
 
+/** Stored context JSON as "key: value · key: value" for the Logs page. */
+function log_context_text(string $json): string
+{
+    $c = json_decode($json, true);
+    if (!is_array($c)) {
+        return $json;
+    }
+    $parts = [];
+    foreach ($c as $k => $v) {
+        $v = is_bool($v) ? ($v ? 'yes' : 'no')
+            : (is_scalar($v) || $v === null ? (string)$v : json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        $parts[] = str_replace('_', ' ', (string)$k) . ': ' . ($v === '' ? '–' : $v);
+    }
+    return implode(' · ', $parts);
+}
+
 function log_prune(): void
 {
     try {

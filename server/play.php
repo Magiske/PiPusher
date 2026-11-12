@@ -108,7 +108,8 @@ if (($_GET['action'] ?? '') === 'state') {
             }
         }
     }
-    log_debug('Web player poll: ' . $resp['state'] . (isset($resp['config']) ? ', new content sent' : ''), ['device' => log_device($d)]);
+    log_debug('Web player poll: ' . $resp['state'] . (isset($resp['config']) ? ', new content sent (version ' . substr($resp['version'], 0, 8) . ')' : ''),
+        ['device' => log_device($d)]);
     json_out($resp);
 }
 

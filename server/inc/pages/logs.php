@@ -94,7 +94,7 @@ page_header('Logs', 'logs');
           <td><?= h(implode(' · ', array_filter([(string)$r['user'], (string)$r['device']]))) ?></td>
           <td class="nowrap"><?= h((string)$r['ip']) ?></td>
           <td><?= h($r['message']) ?>
-            <?php if ($r['context']): ?><div class="muted small log-context"><?= h($r['context']) ?></div><?php endif; ?></td>
+            <?php if ($r['context']): ?><div class="muted small log-context"><?= h(log_context_text($r['context'])) ?></div><?php endif; ?></td>
         </tr>
       <?php endforeach; ?>
       </tbody>
