@@ -78,8 +78,11 @@ page_header('Logs', 'logs');
     <input type="search" name="q" value="<?= h($search) ?>" placeholder="Search message, user, screen, IP">
     <button class="btn btn-sm">Filter</button>
     <?php if ($level !== '' || $search !== ''): ?><a class="btn btn-sm" href="<?= url(['p' => 'logs']) ?>">Clear filter</a><?php endif; ?>
+    <label class="check log-auto" title="Loads new entries every 10 seconds while this tab is open">
+      <input type="checkbox" id="log-auto"> Auto refresh</label>
   </form>
 
+  <div id="log-list">
   <?php if (!$rows): ?>
     <p class="muted"><?= $total || $level !== '' || $search !== '' ? 'No entries match the filter.' : 'The log is empty.' ?></p>
   <?php else: ?>
@@ -105,6 +108,7 @@ page_header('Logs', 'logs');
       <?php if ($page < $pages): ?><a class="btn btn-sm" href="<?= $link(['page' => $page + 1]) ?>">Older →</a><?php endif; ?>
     </div>
   <?php endif; ?>
+  </div>
 </div>
 
 <div class="card">

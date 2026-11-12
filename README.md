@@ -131,7 +131,7 @@ Each user can turn on two-factor authentication (2FA) under their account (👤)
 | **Warning** | failed logins and two-factor codes, wrong device credentials, refused API requests, missing media files, failed uploads, backups or restores, a new error reported by a screen, invalid form tokens, PHP warnings and fatal errors |
 | **Debug** | every sync and web player poll, media file downloads, screenshots and layout previews, every admin page and form (field names only, never values), PHP notices |
 
-Debug is only stored while **Log debug messages** is ticked on the Logs page. It grows fast with many screens, so turn it on while looking into a problem. Entries are kept for 30 days by default (1–365, same page). **Clear log** deletes all entries.
+Debug is only stored while **Log debug messages** is ticked on the Logs page. It grows fast with many screens, so turn it on while looking into a problem. Entries are kept for 30 days by default (1–365, same page). **Clear log** deletes all entries. Tick **Auto refresh** to load new entries every 10 seconds while the tab is visible (remembered in your browser).
 
 ## Raspberry Pi installation
 

@@ -517,3 +517,45 @@
 
   renderAll();
 })();
+
+// Logs page: "Auto refresh" loads the list again every 10 seconds while the tab is visible (remembered in this browser).
+(function () {
+  'use strict';
+  var box = document.getElementById('log-auto');
+  var list = document.getElementById('log-list');
+  if (!box || !list) return;
+  var KEY = 'pipusher-log-auto';
+  try { box.checked = localStorage.getItem(KEY) === '1'; } catch (e) { /* storage blocked */ }
+  var busy = false;
+
+  function refresh() {
+    if (!box.checked || busy || document.hidden) return;
+    busy = true;
+    fetch(location.href, { cache: 'no-store', credentials: 'same-origin' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var fresh = doc.getElementById('log-list');
+        if (!fresh) return; // logged out: the login page came back
+        list.innerHTML = fresh.innerHTML;
+        // Entry counts in the level filter.
+        var sel = document.querySelector('.log-filter select[name=level]');
+        var nsel = doc.querySelector('.log-filter select[name=level]');
+        if (sel && nsel) {
+          for (var i = 0; i < sel.options.length && i < nsel.options.length; i++) sel.options[i].text = nsel.options[i].text;
+        }
+      })
+      .catch(function () { /* server unreachable: try again next time */ })
+      .then(function () { busy = false; });
+  }
+
+  box.addEventListener('change', function () {
+    try { localStorage.setItem(KEY, box.checked ? '1' : '0'); } catch (e) { /* storage blocked */ }
+    refresh();
+  });
+  document.addEventListener('visibilitychange', refresh);
+  setInterval(refresh, 10000);
+})();

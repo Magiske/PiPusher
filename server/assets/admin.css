@@ -243,3 +243,4 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .badge-log-warning { background: rgba(229,165,10,.18); color: #9a6a00; }
 .badge-log-debug { background: var(--border); color: var(--muted); }
 tr.log-warning td { background: rgba(229,165,10,.06); }
+.log-filter .log-auto { margin-left: auto; white-space: nowrap; }
