@@ -1,4 +1,4 @@
-package com.pipusher.client;
+package dk.magiske.pipusher;
 
 import android.app.Activity;
 import android.content.Intent;

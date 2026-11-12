@@ -261,7 +261,7 @@ while the screen waits for approval. Later starts go straight to the player.
   the PIN when one is set. Back alone does nothing.
 - **Start on boot, Android 10 and newer:** Android only lets an app open on screen at start-up when it may *Display
   over other apps*. The settings have a button for it. On TV boxes without that screen:
-  `adb shell appops set com.pipusher.client SYSTEM_ALERT_WINDOW allow`. *Use as home app* is an alternative.
+  `adb shell appops set dk.magiske.pipusher SYSTEM_ALERT_WINDOW allow`. *Use as home app* is an alternative.
 - **Phones and tablets:** allow *Keep running in the background* (battery optimisation) in the settings, or the
   system may stop the player.
 - **Built-in player:** a fullscreen WebView (Chrome's engine, updated through Android System WebView). Videos play
@@ -274,6 +274,8 @@ while the screen waits for approval. Later starts go straight to the player.
 - **Update client** is not available: install the new APK over the old one (settings and cache are kept). After an
   update the player comes back by itself only if it was on screen, so an update does not interrupt another app. The APK
   must be signed with the same key, `tools\android-release.jks`, which the first build created. Keep a copy of it.
+- **App ID:** `dk.magiske.pipusher` since 1.35.0 (before: `com.pipusher.client`). Android sees the new ID as another
+  app: uninstall the old one (`adb uninstall com.pipusher.client`), install the new APK and set it up again.
 
 The release also has `pipusher-android-experimental-<ver>.aab`, the same app as an Android App Bundle for app stores
 such as Google Play. It is signed with the same key (as the upload key) and keeps native libraries extracted, which the
@@ -330,7 +332,7 @@ server/            PHP application (upload this)
 client/            Go agent (stdlib only)
   web/               embedded player page (player.js/css copied by build.ps1)
   install/           install.sh, pipusher-kiosk.sh, uninstall.sh
-android/           Android app (Java, no libraries): manifest, res/, src/com/pipusher/client/
+android/           Android app (Java, no libraries): manifest, res/, src/dk/magiske/pipusher/
 image/             Raspberry Pi DietPi image
   dietpi/            first-boot scripts and pipusher.txt (copied to the boot partition)
   mkimage/           FAT boot partition editor (Go, go-diskfs)
