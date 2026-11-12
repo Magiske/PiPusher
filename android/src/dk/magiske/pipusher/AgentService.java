@@ -11,7 +11,6 @@ import android.content.pm.ServiceInfo;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.Network;
-import android.net.NetworkRequest;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -202,8 +201,7 @@ public class AgentService extends Service {
             public void onLost(Network n) { writeDns(cm); }
         };
         try {
-            if (Build.VERSION.SDK_INT >= 24) cm.registerDefaultNetworkCallback(netCallback);
-            else cm.registerNetworkCallback(new NetworkRequest.Builder().build(), netCallback);
+            cm.registerDefaultNetworkCallback(netCallback);
         } catch (Exception e) {
             Log.e(TAG, "network callback", e);
         }
@@ -211,7 +209,7 @@ public class AgentService extends Service {
 
     private void writeDns(ConnectivityManager cm) {
         List<Network> nets = new ArrayList<>();
-        if (Build.VERSION.SDK_INT >= 23 && cm.getActiveNetwork() != null) nets.add(cm.getActiveNetwork());
+        if (cm.getActiveNetwork() != null) nets.add(cm.getActiveNetwork());
         for (Network n : cm.getAllNetworks()) if (!nets.contains(n)) nets.add(n);
         StringBuilder sb = new StringBuilder();
         for (Network n : nets) {

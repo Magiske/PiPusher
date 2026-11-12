@@ -234,7 +234,7 @@ Turn on automatic sign-in for a dedicated screen PC, so it comes back after a po
 
 ## Android screen (experimental)
 
-An Android phone, tablet or TV box (Android 5.0 or newer) can act as a screen with the PiPusher app,
+An Android phone, tablet or TV box (Android 7.0 or newer; before 1.36.0 also 5.0 and 6.0) can act as a screen with the PiPusher app,
 `pipusher-android-experimental-<ver>.apk`. **Experimental:** a first version to see whether Android screens are worth it, and it has not yet been
 tested on a real device. The APK is only built when asked for: `.\build-android.ps1` (after `build.ps1`).
 

@@ -37,6 +37,8 @@ $versionCode = [int]$Matches[1] * 10000 + [int]$Matches[2] * 100 + [int]$Matches
 Write-Host "PiPusher for Android $Version ($versionCode)" -ForegroundColor Cyan
 # Google Play's minimum target for apps that also run on phones (Android 16); TV-only apps may target 34.
 $targetSdk = '36'
+# Android 7.0 and newer.
+$minSdk = '24'
 
 # ---------------------------------------------------------------- tools
 $jdk = Join-Path $tools 'jdk17'
@@ -108,7 +110,7 @@ $aapt2 = Join-Path $buildTools 'aapt2.exe'
 Write-Host 'Building the app'
 Invoke-Tool $aapt2 @('compile', '--dir', "$root\android\res", '-o', "$work\res.zip") 'aapt2 compile'
 Invoke-Tool $aapt2 @('link', '-o', "$work\base.apk", '-I', $androidJar, '--manifest', "$root\android\AndroidManifest.xml",
-    '--min-sdk-version', '21', '--target-sdk-version', $targetSdk, '--version-code', "$versionCode", '--version-name', $Version,
+    '--min-sdk-version', $minSdk, '--target-sdk-version', $targetSdk, '--version-code', "$versionCode", '--version-name', $Version,
     '--java', "$work\gen", "$work\res.zip") 'aapt2 link'
 
 # Lambdas compile against the build tools' LambdaMetafactory stub; d8 turns them into plain classes.
@@ -116,7 +118,7 @@ $sources = @(Get-ChildItem "$root\android\src", "$work\gen" -Recurse -Filter *.j
 Invoke-Tool "$jdk\bin\javac.exe" (@('-source', '8', '-target', '8', '-Xlint:-options', '-encoding', 'UTF-8',
         '-bootclasspath', "$androidJar;$buildTools\core-lambda-stubs.jar", '-d', "$work\classes") + $sources) 'javac'
 $classes = @(Get-ChildItem "$work\classes" -Recurse -Filter *.class | ForEach-Object FullName)
-Invoke-Tool "$buildTools\d8.bat" (@('--release', '--min-api', '21', '--lib', $androidJar, '--output', "$work\dex") + $classes) 'd8'
+Invoke-Tool "$buildTools\d8.bat" (@('--release', '--min-api', $minSdk, '--lib', $androidJar, '--output', "$work\dex") + $classes) 'd8'
 Copy-Item "$work\dex\classes.dex" "$work\stage\classes.dex"
 
 # classes.dex and the agent go into the APK next to the resources.
@@ -157,7 +159,7 @@ if (-not (Test-Path $bundletool)) {
 }
 Write-Host 'Building the app bundle'
 Invoke-Tool $aapt2 @('link', '--proto-format', '-o', "$work\proto.zip", '-I', $androidJar, '--manifest', "$root\android\AndroidManifest.xml",
-    '--min-sdk-version', '21', '--target-sdk-version', $targetSdk, '--version-code', "$versionCode", '--version-name', $Version,
+    '--min-sdk-version', $minSdk, '--target-sdk-version', $targetSdk, '--version-code', "$versionCode", '--version-name', $Version,
     "$work\res.zip") 'aapt2 link (proto)'
 $module = [IO.Compression.ZipFile]::Open("$work\base.zip", 'Create')
 $proto = [IO.Compression.ZipFile]::OpenRead("$work\proto.zip")

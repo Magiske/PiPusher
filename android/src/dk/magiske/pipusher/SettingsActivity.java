@@ -171,14 +171,13 @@ public class SettingsActivity extends Activity {
 
     private void refreshPermissions() {
         boolean need = Build.VERSION.SDK_INT >= 29;
-        boolean ok = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this);
+        boolean ok = Settings.canDrawOverlays(this);
         overlayNote.setText(!need ? "This Android version opens the player at start-up without extra permission."
             : ok ? "Starting on boot is allowed (\"Display over other apps\" is on)."
             : "Android 10 and newer only open the player at start-up when PiPusher may \"Display over other apps\". "
                 + "On TV boxes without that screen: adb shell appops set " + getPackageName() + " SYSTEM_ALERT_WINDOW allow");
         overlayBtn.setVisibility(need && !ok ? View.VISIBLE : View.GONE);
-        boolean free = Build.VERSION.SDK_INT < 23
-            || ((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName());
+        boolean free = ((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName());
         batteryNote.setText(free ? "" : "Battery saving may stop the player in the background on phones and tablets.");
         batteryNote.setVisibility(free ? View.GONE : View.VISIBLE);
         batteryBtn.setVisibility(free ? View.GONE : View.VISIBLE);
@@ -266,7 +265,7 @@ public class SettingsActivity extends Activity {
     private List<ResolveInfo> browsers() {
         Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("http://example.com/"));
         i.addCategory(Intent.CATEGORY_BROWSABLE);
-        int flags = Build.VERSION.SDK_INT >= 23 ? PackageManager.MATCH_ALL : 0;
+        int flags = PackageManager.MATCH_ALL;
         List<ResolveInfo> out = new ArrayList<>();
         for (ResolveInfo ri : getPackageManager().queryIntentActivities(i, flags)) {
             if (!ri.activityInfo.packageName.equals(getPackageName())) out.add(ri);
