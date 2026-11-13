@@ -93,7 +93,7 @@ function layout_data(int $layoutId, array &$mediaIds): ?array
             'transition' => $z['transition'],
             'timer' => (bool)$z['timer'],
             'items' => $items,
-        ];
+        ] + ((int)$z['radius'] > 0 ? ['radius' => (int)$z['radius']] : []);
     }
     return [
         'id' => (int)$layout['id'],

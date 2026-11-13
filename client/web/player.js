@@ -438,6 +438,8 @@
       ze.style.width = zc.w + '%';
       ze.style.height = zc.h + '%';
       ze.style.zIndex = zc.z;
+      // Rounded corners: radius in pixels of a 1080p screen, scaled to this screen (the shorter side of the area).
+      if (zc.radius > 0) ze.style.borderRadius = 'calc(min(var(--pp-w, 100vw), var(--pp-h, 100vh)) * ' + zc.radius / 1080 + ')';
       zones.push(new Zone(ze, zc, media, onPass, onReady));
     });
     return { stage: stage, zones: zones };

@@ -351,6 +351,8 @@
       b.style.width = z.w + '%';
       b.style.height = z.h + '%';
       b.style.zIndex = 10 + (z.z || 0);
+      // Same scale as the player: the radius is in pixels of a 1080-pixel-high screen.
+      if (z.radius > 0) b.style.borderRadius = Math.min(stage.clientWidth, stage.clientHeight) * z.radius / 1080 + 'px';
       b.textContent = z.name;
       var hdl = document.createElement('div');
       hdl.className = 'handle';
@@ -402,12 +404,15 @@
         '<td><select data-k="transition">' + options(cfg.transitions, z.transition || 'fade') + '</select></td>' +
         '<td class="zone-timer"><input data-k="timer" type="checkbox" title="Progress bar at the bottom of the zone"' +
           (z.timer ? ' checked' : '') + '></td>' +
+        '<td class="zone-radius"><input data-k="radius" type="number" min="0" max="540" step="1" value="' + (z.radius || 0) + '"' +
+          ' title="Rounded corners: radius in pixels on a 1080p screen, 0 = square"></td>' +
         '<td><button type="button" class="btn btn-sm btn-danger zone-remove" title="Remove zone">✕</button></td>';
       tr.addEventListener('focusin', function () { select(i, false); });
       tr.querySelectorAll('[data-k]').forEach(function (inp) {
         inp.addEventListener('input', function () {
           var k = inp.getAttribute('data-k');
           if (k === 'timer') z[k] = inp.checked;
+          else if (k === 'radius') z[k] = Math.max(0, Math.min(540, Math.round(Number(inp.value) || 0)));
           else z[k] = (k === 'name' || k === 'fit' || k === 'transition') ? inp.value : Number(inp.value);
           if ('xywh'.indexOf(k) >= 0) normalise(z);
           dirty = true;
@@ -480,7 +485,7 @@
 
   document.getElementById('zone-add').addEventListener('click', function () {
     var maxZ = zones.reduce(function (m, z) { return Math.max(m, z.z || 0); }, 0);
-    zones.push({ id: null, name: 'Zone ' + (zones.length + 1), x: 25, y: 25, w: 50, h: 50, z: maxZ + 1, fit: 'contain', transition: 'fade', timer: false });
+    zones.push({ id: null, name: 'Zone ' + (zones.length + 1), x: 25, y: 25, w: 50, h: 50, z: maxZ + 1, fit: 'contain', transition: 'fade', timer: false, radius: 0 });
     selected = zones.length - 1;
     dirty = true;
     renderAll();
@@ -498,7 +503,7 @@
       // Re-use existing zones (and their playlists) in order; extra zones are removed on save.
       zones = t.zones.map(function (tz, i) {
         var old = zones[i] || {};
-        return { id: old.id || null, name: old.id ? old.name : tz.name, x: tz.x, y: tz.y, w: tz.w, h: tz.h, z: i, fit: old.fit || 'contain', transition: old.transition || 'fade', timer: !!old.timer };
+        return { id: old.id || null, name: old.id ? old.name : tz.name, x: tz.x, y: tz.y, w: tz.w, h: tz.h, z: i, fit: old.fit || 'contain', transition: old.transition || 'fade', timer: !!old.timer, radius: old.radius || 0 };
       });
       selected = 0;
       dirty = true;

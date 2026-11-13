@@ -90,13 +90,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 isset(PP_FITS[$z['fit'] ?? '']) ? $z['fit'] : 'contain',
                 isset(PP_TRANSITIONS[$z['transition'] ?? '']) ? $z['transition'] : 'fade',
                 empty($z['timer']) ? 0 : 1,
+                (int)$clamp($z['radius'] ?? 0, 0, 540),
             ];
             $zid = (int)($z['id'] ?? 0);
             if ($zid && in_array($zid, $existing)) {
-                x('UPDATE zones SET name = ?, x = ?, y = ?, w = ?, h = ?, z = ?, fit = ?, transition = ?, timer = ? WHERE id = ?', [...$row, $zid]);
+                x('UPDATE zones SET name = ?, x = ?, y = ?, w = ?, h = ?, z = ?, fit = ?, transition = ?, timer = ?, radius = ? WHERE id = ?', [...$row, $zid]);
                 $keep[] = $zid;
             } else {
-                x('INSERT INTO zones (name, x, y, w, h, z, fit, transition, timer, layout_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$row, $id]);
+                x('INSERT INTO zones (name, x, y, w, h, z, fit, transition, timer, radius, layout_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$row, $id]);
             }
         }
         foreach (array_diff($existing, $keep) as $gone) {
@@ -164,7 +165,7 @@ $devices = devices_showing($id, null);
 $editorZones = array_map(fn($z) => [
     'id' => (int)$z['id'], 'name' => $z['name'], 'x' => (float)$z['x'], 'y' => (float)$z['y'],
     'w' => (float)$z['w'], 'h' => (float)$z['h'], 'z' => (int)$z['z'], 'fit' => $z['fit'], 'transition' => $z['transition'],
-    'timer' => (bool)$z['timer'],
+    'timer' => (bool)$z['timer'], 'radius' => (int)$z['radius'],
 ], $zones);
 $templates = array_map(fn($t) => ['label' => $t['label'], 'zones' => array_map(
     fn($z) => ['name' => $z[0], 'x' => $z[1], 'y' => $z[2], 'w' => $z[3], 'h' => $z[4]], $t['zones'])], layout_templates());
@@ -221,7 +222,7 @@ page_header($layout['name'], 'layouts');
       </div>
       <div class="zone-list">
         <table class="table compact zone-table">
-          <thead><tr><th>Name</th><th>X</th><th>Y</th><th>W</th><th>H</th><th>Layer</th><th>Fit</th><th>Transition</th><th title="A thin bar at the bottom of the zone showing how long the item stays">Timer</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>X</th><th>Y</th><th>W</th><th>H</th><th>Layer</th><th>Fit</th><th>Transition</th><th title="A thin bar at the bottom of the zone showing how long the item stays">Timer</th><th title="Rounded corners: radius in pixels on a 1080p screen (scaled on other screens), 0 = square">Corners</th><th></th></tr></thead>
           <tbody id="zone-rows"></tbody>
         </table>
         <div class="row">

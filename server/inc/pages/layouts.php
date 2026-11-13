@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 [$src['name'] . ' (copy)', $src['orientation'], $src['background'], $src['folder_id'], now(), now()]);
             $newId = last_id();
             foreach (q('SELECT * FROM zones WHERE layout_id = ?', [$src['id']]) as $z) {
-                x('INSERT INTO zones (layout_id, name, x, y, w, h, z, fit, transition, timer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$newId, $z['name'], $z['x'], $z['y'], $z['w'], $z['h'], $z['z'], $z['fit'], $z['transition'], $z['timer']]);
+                x('INSERT INTO zones (layout_id, name, x, y, w, h, z, fit, transition, timer, radius) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [$newId, $z['name'], $z['x'], $z['y'], $z['w'], $z['h'], $z['z'], $z['fit'], $z['transition'], $z['timer'], $z['radius']]);
                 $newZone = last_id();
                 x('INSERT INTO playlist_items (zone_id, media_id, duration, size, after, position)
                    SELECT ?, media_id, duration, size, after, position FROM playlist_items WHERE zone_id = ?', [$newZone, $z['id']]);

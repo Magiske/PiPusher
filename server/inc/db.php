@@ -277,6 +277,10 @@ function migrate(PDO $pdo): void
                 created_at INTEGER NOT NULL
             )',
         ],
+        23 => [
+            // Rounded zone corners: radius in pixels of a 1080p screen (scaled to the screen's real size), 0 = square.
+            'ALTER TABLE zones ADD COLUMN radius INTEGER NOT NULL DEFAULT 0',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {
