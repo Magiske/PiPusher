@@ -34,6 +34,7 @@ if ($action === 'sync') {
         json_out(['error' => 'POST required'], 405);
     }
     [$uuid, $secret] = device_from_auth();
+    notify_after_response();
     $body = json_decode((string)file_get_contents('php://input'), true);
     if (!is_array($body)) {
         $body = [];
@@ -56,6 +57,9 @@ if ($action === 'sync') {
         log_info($keyOk ? 'New screen registered and approved with the registration key' : 'New screen registered, waiting for approval',
             ['device' => log_device($device), 'client' => $info['client_version'], 'hostname' => $info['hostname'],
              'key' => ($body['registration_key'] ?? '') === '' ? 'none' : ($keyOk ? 'right' : 'wrong')]);
+        if (!$keyOk) {
+            notify_pending_screen($device, $info);
+        }
     } elseif (!hash_equals($device['secret_hash'], hash('sha256', $secret))) {
         log_warning('Sync with a wrong device secret', ['device' => log_device($device)]);
         json_out(['error' => 'device credentials do not match'], 403);
@@ -78,6 +82,7 @@ if ($action === 'sync') {
 
     x('UPDATE devices SET last_seen = ?, ip = ?, info = ?, command = NULL WHERE id = ?',
         [now(), $_SERVER['REMOTE_ADDR'] ?? '', json_encode($info, JSON_UNESCAPED_SLASHES), $device['id']]);
+    notify_device($device, $info);
 
     $resp = [
         'status' => 'pending',

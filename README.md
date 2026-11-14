@@ -121,6 +121,24 @@ Each user can turn on two-factor authentication (2FA) under their account (👤)
 - The upload is limited by PHP's `upload_max_filesize` and `post_max_size`, and the Settings card shows the limit. For a large media library, raise both limits in `php.ini` or `.user.ini`.
 - Screens keep working after a restore when the new server has the same address, because they authenticate with the device keys stored in the database. Use this to move PiPusher to another host.
 
+### Notifications
+
+**Notifications** in the admin panel (administrators) sends emails when a screen needs attention, and again when the problem is over:
+
+| Notification | When (defaults, all adjustable) |
+|---|---|
+| **Screen offline** / back online | no contact for 10 minutes (at least 3 sync intervals) |
+| **Low disk space** | 1 GB free or less (cleared again above 1.25 GB + 256 MB) |
+| **Low memory** | 10 % free or less for 5 minutes |
+| **High temperature** | 75 °C or more for 2 minutes (Raspberry Pi and Android report it; cleared 5 °C below) |
+| **Client update failed** | the screen reports an update error |
+| **Screen error** | the screen reports an error for 15 minutes in a row, so a short network hiccup sends nothing |
+| **New screen waiting for approval** | a screen registers without the registration key |
+
+Emails go through an **SMTP server** (STARTTLS, SSL/TLS or none, with login; Gmail and Microsoft 365 need an app password) or PHP's own `mail()`. **Save and send a test email** checks the settings. Notifications that happen together, such as many screens going offline at once, arrive in one email. Failed sends are retried up to 5 times within a day. The page lists open problems and the last 100 notifications with their email status. A screen can be left out on its own page (**Notifications → Leave out**). Web screens are left out by default, because they are offline whenever the browser is closed.
+
+Checks run after screen syncs, web player polls and admin pages, at most once a minute, after the response has been sent. When **every** screen loses its connection at once (a power cut or an internet outage at the location), nothing reaches the server. To catch that too, let a cron job or an uptime monitor open the **check link** shown on the page every 5 minutes, e.g. `*/5 * * * * curl -fsS "https://your-site/pipusher/cron.php?key=…" >/dev/null`. Memory, and disk space on Windows, are reported by client 1.42.0 or newer. Older Pi clients report disk space only.
+
 ### Server log
 
 **Logs** in the admin panel (administrators) shows what happens on the server, newest first, with a level filter and a search box. It is kept in its own database, `data/logs.sqlite`, apart from `pipusher.sqlite`, so backups leave it out and a restore leaves it alone.
@@ -338,6 +356,8 @@ server/            PHP application (upload this)
   inc/totp.php       two-factor authentication (TOTP + recovery codes)
   inc/log.php        server log (data/logs.sqlite; Logs page in inc/pages/logs.php)
   inc/ticker.php     ticker media: design → index.html with the smooth-scrolling engine
+  inc/notify.php     notifications (rules, alerts state, queue, emails); inc/mail.php sends (SMTP or mail())
+  cron.php           scheduled check link for notifications (cron.php?key=…)
   assets/qrcode.js   QR code generator for 2FA setup (qrcode-generator 1.4.4, MIT, Kazuhiko Arase)
   play.php           online web player (web screens, no login)
   download.php       client packages from downloads/ (admin session or registration key)

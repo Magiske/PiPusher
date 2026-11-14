@@ -89,6 +89,8 @@ if (($_GET['action'] ?? '') === 'state') {
     }
     x('UPDATE devices SET last_seen = ?, ip = ?, info = ?, command = NULL WHERE id = ?',
         [now(), $_SERVER['REMOTE_ADDR'] ?? '', json_encode($info, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $d['id']]);
+    notify_after_response();
+    notify_device($d, $info);
     $resp = [
         'state' => 'pending',
         'online' => true,

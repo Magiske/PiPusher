@@ -4,7 +4,7 @@ declare(strict_types=1);
 function page_header(string $title, string $active = ''): void
 {
     $nav = is_admin()
-        ? ['devices' => 'Screens', 'playlists' => 'Playlists', 'layouts' => 'Layouts', 'media' => 'Media', 'users' => 'Users', 'settings' => 'Settings', 'logs' => 'Logs']
+        ? ['devices' => 'Screens', 'playlists' => 'Playlists', 'layouts' => 'Layouts', 'media' => 'Media', 'users' => 'Users', 'settings' => 'Settings', 'notifications' => 'Notifications', 'logs' => 'Logs']
         : ['playlists' => 'Playlists'];
     ?><!doctype html>
 <html lang="en"<?= time_format() !== '' ? ' data-time-format="' . time_format() . '"' : '' ?><?= console_date_format() !== '' ? ' data-date-format="' . console_date_format() . '"' : '' ?>>

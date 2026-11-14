@@ -26,8 +26,16 @@ func (a *Agent) systemInfo() map[string]any {
 		"cache_size":       a.cache.Size(),
 	}
 	a.mu.RUnlock()
-	if free, ok := diskFree(a.cfg.DataDir); ok {
+	if free, total, ok := diskSpace(a.cfg.DataDir); ok {
 		info["disk_free"] = free
+		if total > 0 {
+			info["disk_total"] = total
+		}
+	}
+	// Memory: total and available (what programs can still get without swapping), for low-memory notifications.
+	if total, avail, ok := memoryInfo(); ok && total > 0 {
+		info["mem_total"] = total
+		info["mem_free"] = avail
 	}
 	if up, ok := systemUptime(); ok {
 		info["uptime_s"] = int(up.Seconds())

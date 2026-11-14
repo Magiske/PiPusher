@@ -247,8 +247,8 @@ function create_web_screen(string $name): array
 {
     [$layout, $playlist, $group] = new_screen_defaults();
     $code = random_code();
-    x("INSERT INTO devices (uuid, secret_hash, code, name, status, kind, web_token, layout_id, playlist_id, group_id, use_group_content, created_at)
-       VALUES (?, ?, ?, ?, 'approved', 'web', ?, ?, ?, ?, ?, ?)",
+    x("INSERT INTO devices (uuid, secret_hash, code, name, status, kind, web_token, layout_id, playlist_id, group_id, use_group_content, created_at, notify)
+       VALUES (?, ?, ?, ?, 'approved', 'web', ?, ?, ?, ?, ?, ?, 0)",
         ['web-' . random_token(16), hash('sha256', random_token()), $code, mb_substr(trim($name) ?: 'Web screen ' . $code, 0, 80),
          random_token(16), $layout, $playlist, $group, $group ? 1 : 0, now()]);
     return q1('SELECT * FROM devices WHERE id = ?', [last_id()]);

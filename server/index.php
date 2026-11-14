@@ -24,7 +24,7 @@ if ($problems) {
 start_session();
 
 $pages = ['devices', 'device', 'group', 'playlists', 'playlist', 'layouts', 'layout', 'media', 'media_edit', 'settings',
-    'users', 'account', 'login', 'logout', 'setup', 'logs'];
+    'users', 'account', 'login', 'logout', 'setup', 'logs', 'notifications'];
 // Pages a playlist editor may open; everything else is administrators only.
 $editorPages = ['playlists', 'playlist', 'account', 'logout'];
 $p = $_GET['p'] ?? '';
@@ -66,6 +66,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         log_debug('Page opened: ' . $p . implode('', array_map(fn($k, $v) => ' ' . $k . '=' . mb_substr((string)$v, 0, 40),
             array_keys($extra), $extra)));
     }
+}
+
+if (is_admin()) {
+    if (setting('notify_base_url', '') !== server_base_url()) {
+        set_setting('notify_base_url', server_base_url());
+    }
+    notify_after_response();
 }
 
 require __DIR__ . '/inc/pages/' . $p . '.php';

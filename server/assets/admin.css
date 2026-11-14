@@ -247,3 +247,9 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .badge-log-debug { background: var(--border); color: var(--muted); }
 tr.log-warning td { background: rgba(229,165,10,.06); }
 .log-filter .log-auto { margin-left: auto; white-space: nowrap; }
+
+/* Notifications page */
+.break-all { word-break: break-all; }
+.notify-rules td { vertical-align: middle; }
+.notify-rules input[type="number"] { width: 5.5rem; }
+.table .nowrap { white-space: nowrap; }

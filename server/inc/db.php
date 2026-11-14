@@ -281,6 +281,35 @@ function migrate(PDO $pdo): void
             // Rounded zone corners: radius in pixels of a 1080p screen (scaled to the screen's real size), 0 = square.
             'ALTER TABLE zones ADD COLUMN radius INTEGER NOT NULL DEFAULT 0',
         ],
+        24 => [
+            // Notifications (inc/notify.php). A screen can be left out; web screens are left out by default.
+            'ALTER TABLE devices ADD COLUMN notify INTEGER NOT NULL DEFAULT 1',
+            "UPDATE devices SET notify = 0 WHERE kind = 'web'",
+            // A problem being watched per screen: since = first seen, active = notified (a problem must last its delay).
+            'CREATE TABLE alerts (
+                device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL,
+                since INTEGER NOT NULL,
+                active INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (device_id, kind)
+            )',
+            // Notifications sent (or to send): sent_at NULL = not sent yet, claim = taken by a request sending it.
+            'CREATE TABLE notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts INTEGER NOT NULL,
+                device_id INTEGER,
+                device TEXT NOT NULL DEFAULT \'\',
+                kind TEXT NOT NULL,
+                state TEXT NOT NULL,
+                message TEXT NOT NULL,
+                sent_at INTEGER,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                error TEXT NOT NULL DEFAULT \'\',
+                claim TEXT,
+                claimed_at INTEGER
+            )',
+            'CREATE INDEX notifications_ts ON notifications (ts)',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

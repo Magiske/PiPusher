@@ -27,4 +27,6 @@ require __DIR__ . '/text.php';
 require __DIR__ . '/ticker.php';
 require __DIR__ . '/totp.php';
 require __DIR__ . '/log.php';
+require __DIR__ . '/mail.php';
+require __DIR__ . '/notify.php';
 log_install_php_handlers();

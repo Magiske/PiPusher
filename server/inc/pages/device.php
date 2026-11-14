@@ -37,6 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             x('UPDATE devices SET reload_at = ? WHERE id = ?', [$at, $id]);
             flash('Daily reload saved; the screen picks it up on its next sync.');
         }
+    } elseif ($do === 'notify') {
+        $on = ($_POST['notify'] ?? '') === '1' ? 1 : 0;
+        x('UPDATE devices SET notify = ? WHERE id = ?', [$on, $id]);
+        if (!$on) {
+            x('DELETE FROM alerts WHERE device_id = ?', [$id]);
+        }
+        log_info('Notifications for the screen turned ' . ($on ? 'on' : 'off'), ['device' => log_device($device)]);
+        flash($on ? 'Notifications on for this screen.' : 'This screen is left out of notifications.');
     } elseif ($do === 'mute') {
         $muted = ($_POST['muted'] ?? '') === '1' ? 1 : 0;
         x('UPDATE devices SET muted = ? WHERE id = ?', [$muted, $id]);
@@ -156,11 +164,15 @@ page_header($device['name'], 'devices');
           if (($ts = $since($k)) !== null): ?><dt><?= $label ?></dt><dd><?= $when($ts) ?></dd><?php endif;
       endforeach; ?>
       <?php if (isset($info['cpu_temp_c'])): ?><dt>CPU temp</dt><dd><?= h($info['cpu_temp_c']) ?> °C</dd><?php endif; ?>
-      <?php if (isset($info['disk_free'])): ?><dt>Disk free</dt><dd><?= h(human_size((int)$info['disk_free'])) ?></dd><?php endif; ?>
+      <?php if (isset($info['disk_free'])): ?><dt>Disk free</dt><dd><?= h(human_size((int)$info['disk_free'])) ?><?= !empty($info['disk_total']) ? ' of ' . h(human_size((int)$info['disk_total'])) : '' ?></dd><?php endif; ?>
+      <?php if (!empty($info['mem_total'])): ?><dt>Memory free</dt><dd><?= h(human_size((int)($info['mem_free'] ?? 0))) ?> of <?= h(human_size((int)$info['mem_total'])) ?></dd><?php endif; ?>
       <?php if (isset($info['cache_size'])): ?><dt>Cache</dt><dd><?= h(human_size((int)$info['cache_size'])) ?></dd><?php endif; ?>
       <?php if (!empty($info['playing_version'])): ?><dt>Content</dt><dd><code><?= h(substr($info['playing_version'], 0, 10)) ?></code></dd><?php endif; ?>
       <?php if (!empty($info['last_error'])): ?><dt>Last error</dt><dd class="text-error"><?= h($info['last_error']) ?></dd><?php endif; ?>
       <dt>Registered</dt><dd><?= h(date('Y-m-d H:i', (int)$device['created_at'])) ?></dd>
+      <dt>Notifications</dt><dd><?= (int)$device['notify'] ? 'On' : 'Off' ?>
+        <?= post_button(['do' => 'notify', 'notify' => (int)$device['notify'] ? '0' : '1'], (int)$device['notify'] ? 'Leave out' : 'Turn on', 'btn btn-sm') ?>
+        <a class="small" href="<?= url(['p' => 'notifications']) ?>">settings</a></dd>
     </dl>
   </div>
 
