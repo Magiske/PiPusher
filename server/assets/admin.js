@@ -215,6 +215,7 @@
     };
     var later = function () { clearTimeout(textTimer); textTimer = setTimeout(render, 250); };
     var sync = function () {
+      if (!lines) return; // ticker editor: no line rows
       lines.querySelectorAll('.text-line-row').forEach(function (row) {
         row.setAttribute('data-style', row.querySelector('select[name="line_style[]"]').value);
       });
@@ -226,7 +227,7 @@
     paint();
     var grow = function (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; };
     textForm.addEventListener('input', function (e) {
-      if (e.target.tagName === 'TEXTAREA') grow(e.target);
+      if (e.target.tagName === 'TEXTAREA' && lines) grow(e.target);
       sync(); later();
     });
     textForm.addEventListener('change', function () { sync(); later(); });
@@ -255,7 +256,7 @@
       box.style.width = 'min(100%, calc(70vh * ' + shape.value + '))'; // tall shapes stay on screen
     };
     shape.addEventListener('change', reshape);
-    lines.querySelectorAll('textarea').forEach(grow);
+    if (lines) lines.querySelectorAll('textarea').forEach(grow);
     sync(); reshape();
   }
 

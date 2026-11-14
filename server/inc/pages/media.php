@@ -22,7 +22,7 @@ const PP_HTML_STARTER = <<<'HTML'
 HTML;
 
 $folderId = valid_folder_id($_GET['folder'] ?? null);
-$filter = in_array($_GET['type'] ?? '', ['html', 'text', 'image', 'video', 'url'], true) ? $_GET['type'] : '';
+$filter = in_array($_GET['type'] ?? '', ['html', 'text', 'ticker', 'image', 'video', 'url'], true) ? $_GET['type'] : '';
 $search = trim((string)($_GET['q'] ?? ''));
 $here = fn(?int $fid = null) => url(array_filter(['p' => 'media', 'folder' => $fid, 'type' => $filter ?: null]));
 
@@ -57,6 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($ok) {
             flash("$ok file(s) added.");
         }
+    } elseif ($do === 'ticker_new') {
+        $mid = create_ticker_media(trim((string)$_POST['name']) ?: 'New ticker', ticker_defaults(), $target);
+        redirect(url(['p' => 'media_edit', 'id' => $mid]));
     } elseif ($do === 'html_new') {
         $mid = create_html_media(trim((string)$_POST['name']) ?: 'New page', PP_HTML_STARTER, $target);
         redirect(url(['p' => 'media_edit', 'id' => $mid]));
@@ -161,7 +164,7 @@ page_header($current ? $current['name'] : 'Media', 'media');
   </form>
 </div>
 <div class="row wrap" style="margin-bottom:1rem">
-  <?php foreach (['' => 'All types', 'text' => 'Text', 'html' => 'HTML', 'image' => 'Images', 'video' => 'Videos', 'url' => 'Links'] as $k => $label): ?>
+  <?php foreach (['' => 'All types', 'text' => 'Text', 'ticker' => 'Tickers', 'html' => 'HTML', 'image' => 'Images', 'video' => 'Videos', 'url' => 'Links'] as $k => $label): ?>
     <a class="chip <?= $filter === $k ? 'active' : '' ?>" href="<?= url(array_filter(['p' => 'media', 'folder' => $folderId, 'type' => $k ?: null, 'q' => $search ?: null])) ?>"><?= h($label) ?></a>
   <?php endforeach; ?>
 </div>
@@ -185,7 +188,7 @@ page_header($current ? $current['name'] : 'Media', 'media');
 <?php endif; ?>
 
 <details class="card add-media" <?= !$items && !$subfolders && $search === '' ? 'open' : '' ?>>
-  <summary><strong>＋ Add media<?= $current ? ' to “' . h($current['name']) . '”' : '' ?></strong> <span class="muted small">upload files, write a text or HTML page, or add a link</span></summary>
+  <summary><strong>＋ Add media<?= $current ? ' to “' . h($current['name']) . '”' : '' ?></strong> <span class="muted small">upload files, write a text, ticker or HTML page, or add a link</span></summary>
   <div class="grid-3">
     <form method="post" enctype="multipart/form-data" class="stack">
       <?= csrf_field() ?><input type="hidden" name="do" value="upload"><input type="hidden" name="folder_id" value="<?= $folderId ?>">
@@ -204,6 +207,14 @@ page_header($current ? $current['name'] : 'Media', 'media');
       <label>Name <input name="name" required placeholder="Today's special"></label>
       <p class="muted small">Headings, text and price tags laid out in a form, no HTML needed. The text has no background,
         so it can go in a zone on top of a picture or video.</p>
+      <button class="btn btn-primary">Create and edit</button>
+    </form>
+    <form method="post" class="stack">
+      <?= csrf_field() ?><input type="hidden" name="do" value="ticker_new"><input type="hidden" name="folder_id" value="<?= $folderId ?>">
+      <h3>New ticker</h3>
+      <label>Name <input name="name" required placeholder="News ticker"></label>
+      <p class="muted small">Messages that scroll across a zone, smoothly even on a Raspberry Pi or TV. Best in a
+        wide, low zone such as a footer.</p>
       <button class="btn btn-primary">Create and edit</button>
     </form>
     <form method="post" class="stack">
@@ -242,7 +253,7 @@ page_header($current ? $current['name'] : 'Media', 'media');
     <a class="thumb" href="<?= url(['p' => 'media_edit', 'id' => $m['id']]) ?>">
       <?php if ($m['type'] === 'image'): ?><img src="<?= h($src) ?>" loading="lazy" alt="">
       <?php elseif ($m['type'] === 'video'): ?><video src="<?= h($src) ?>#t=1" preload="metadata" muted></video>
-      <?php elseif ($m['type'] === 'html' || $m['type'] === 'text'): ?><iframe src="<?= h($src) ?>"<?= $m['type'] === 'text' ? ' style="background:#334155"' : '' ?> loading="lazy" tabindex="-1" scrolling="no"></iframe>
+      <?php elseif (in_array($m['type'], ['html', 'text', 'ticker'], true)): ?><iframe src="<?= h($src) ?>"<?= $m['type'] === 'text' ? ' style="background:#334155"' : '' ?> loading="lazy" tabindex="-1" scrolling="no"></iframe>
       <?php else: ?><span class="thumb-url">🔗 <?= h(parse_url((string)$m['url'], PHP_URL_HOST)) ?></span><?php endif; ?>
     </a>
     <div class="media-meta">

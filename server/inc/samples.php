@@ -110,30 +110,11 @@ HTML, 'music.jpg');
 </script></body></html>
 HTML, $folder);
 
-    $ticker = create_html_media('Sample – Ticker', <<<'HTML'
-<!doctype html>
-<html><head><meta charset="utf-8"><style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#f8fafc;color:#0f172a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{display:flex;align-items:center;height:100%;white-space:nowrap}
-  .msg{display:inline-block;padding-left:100%;font-size:45vh;font-weight:600;animation:scroll 30s linear infinite}
-  @keyframes scroll{to{transform:translateX(-100%)}}
-</style></head><body>
-  <div class="wrap"><span class="msg">Opening hours: Mon–Fri 07–18 · Sat–Sun 09–16 &nbsp;★&nbsp; Free Wi-Fi: HarbourGuest &nbsp;★&nbsp; Ask about our loyalty card</span></div>
-<script>
-  // Scroll speed in pixels per second: short and long messages move at the same speed.
-  var SPEED = 150;
-
-  var msg = document.querySelector('.msg');
-  function setSpeed() {
-    // The text travels its own width plus the screen width (the padding), so time = distance / speed.
-    msg.style.animationDuration = (msg.offsetWidth / SPEED) + 's';
-  }
-  setSpeed();
-  if (document.fonts) document.fonts.ready.then(setSpeed);
-  window.addEventListener('resize', setSpeed);
-</script>
-</body></html>
-HTML, $folder);
+    $ticker = create_ticker_media('Sample – Ticker', [
+        'messages' => ['Opening hours: Mon–Fri 07–18 · Sat–Sun 09–16', 'Free Wi-Fi: HarbourGuest', 'Ask about our loyalty card'],
+        'separator' => '★', 'font' => 'sans', 'bold' => true, 'size' => 0.55, 'speed' => 3, 'direction' => 'left',
+        'color' => '#0f172a', 'background' => '#f8fafc', 'accent' => '#d97706',
+    ], $folder);
 
     $layoutId = create_layout('Demo layout', 'landscape', 'sidebar_ticker');
     $zones = q('SELECT id, name FROM zones WHERE layout_id = ? ORDER BY z', [$layoutId]);

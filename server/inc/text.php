@@ -189,10 +189,12 @@ function text_design_font(array $d): ?array
     return preg_match('/^f(\d+)$/', $d['font'], $m) ? q1('SELECT * FROM fonts WHERE id = ?', [(int)$m[1]]) : null;
 }
 
-/** Writes the design and its index.html, with a copy of its uploaded font. */
-function save_text_media(int $id, array $design): void
+/**
+ * Prepares a designed item's folder (text or ticker): removes everything but index.html and copies the uploaded
+ * font the design uses as font.<ext>. Returns the font's file name for the page, or null for a built-in font.
+ */
+function design_media_font(int $id, array $design): ?string
 {
-    $design = text_design($design);
     $dir = media_dir($id);
     if (!is_dir($dir)) {
         mkdir($dir, 0775, true);
@@ -204,7 +206,7 @@ function save_text_media(int $id, array $design): void
     if ($kept) {
         $fontUrl = basename($kept);
     }
-    // Only index.html and the font belong to a text item (1.32.0 also kept a photo here).
+    // Only index.html and the font belong to the item (1.32.0 also kept a photo here).
     foreach (glob($dir . '/*') ?: [] as $f) {
         if (is_file($f) && basename($f) !== 'index.html' && $f !== $kept) {
             unlink($f);
@@ -213,6 +215,15 @@ function save_text_media(int $id, array $design): void
     if ($font && !$kept && $fontUrl) {
         copy(PP_FONTS . '/' . $font['file'], $dir . '/' . $fontUrl);
     }
+    return $fontUrl;
+}
+
+/** Writes the design and its index.html, with a copy of its uploaded font. */
+function save_text_media(int $id, array $design): void
+{
+    $design = text_design($design);
+    $dir = media_dir($id);
+    $fontUrl = design_media_font($id, $design);
     file_put_contents($dir . '/index.html', text_media_html($design, $fontUrl));
     x('UPDATE media SET design = ? WHERE id = ?', [json_encode($design, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $id]);
     reindex_media($id);

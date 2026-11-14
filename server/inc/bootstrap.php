@@ -24,6 +24,7 @@ require __DIR__ . '/db.php';
 require __DIR__ . '/functions.php';
 require __DIR__ . '/payload.php';
 require __DIR__ . '/text.php';
+require __DIR__ . '/ticker.php';
 require __DIR__ . '/totp.php';
 require __DIR__ . '/log.php';
 log_install_php_handlers();

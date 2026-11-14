@@ -150,6 +150,8 @@ form.inline { display: inline; }
 .badge-video { background: #fdeee6; color: #c2511b; }
 .badge-url { background: #f1e9fb; color: #7a3fc4; }
 .badge-text { background: #fff3e0; color: #b45309; }
+.badge-ticker { background: #e6f7f1; color: #047857; }
+.text-group textarea[name="messages"] { width: 100%; box-sizing: border-box; }
 .badge-pending { background: #fff3cd; color: #8a6200; }
 .chip { padding: .25rem .7rem; border-radius: 99px; border: 1px solid var(--border); color: var(--text); font-size: .85rem; }
 .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
