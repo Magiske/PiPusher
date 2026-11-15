@@ -90,7 +90,7 @@ function install_samples(): string
 
     // ---------- Layouts ----------
     // $zones: [name, x, y, w, h, layer (higher = on top), fit, transition, timer, corner radius, fade ("left:50" = fade
-    // over 50 % of the zone from its left edge into the background or the zones under it)]
+    // over 50 % of the zone from its left edge into the background or the zones under it), opacity % (100 = solid)]
     $layout = function (string $name, string $orientation, string $background, array $zones) use ($layoutFolder): array {
         x('INSERT INTO layouts (name, orientation, background, folder_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
             [$name, $orientation, $background, $layoutFolder, now(), now()]);
@@ -98,8 +98,8 @@ function install_samples(): string
         $ids = [];
         foreach ($zones as $zd) {
             [$zn, $zx, $zy, $zw, $zh, $zz, $fit, $tr, $timer, $radius] = $zd;
-            x('INSERT INTO zones (layout_id, name, x, y, w, h, z, fit, transition, timer, radius, fade) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [$id, $zn, $zx, $zy, $zw, $zh, $zz, $fit, $tr, $timer, $radius, $zd[10] ?? '']);
+            x('INSERT INTO zones (layout_id, name, x, y, w, h, z, fit, transition, timer, radius, fade, opacity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [$id, $zn, $zx, $zy, $zw, $zh, $zz, $fit, $tr, $timer, $radius, $zd[10] ?? '', $zd[11] ?? 100]);
             $ids[$zn] = last_id();
         }
         return [$id, $ids];
@@ -125,11 +125,12 @@ function install_samples(): string
     $item($z['Clock'], $clock, 60);
     $item($z['Info'], $ticker, 60);
 
-    // Evening: a text zone on top of a photo that fades into the purple background; the text holds on screen.
+    // Evening: a text zone on top of a photo that fades into the purple background (the text holds on screen), and a
+    // see-through ticker (70 % opacity) over the bottom of the photo.
     [$evening, $z] = $layout('Café – evening', 'landscape', '#2e1065', [
-        ['Photo', 20, 0, 80, 88, 0, 'cover', 'fade', 0, 0, 'left:55'],
+        ['Photo', 20, 0, 80, 100, 0, 'cover', 'fade', 0, 0, 'left:55'],
         ['Text', 0, 0, 60, 88, 1, 'contain', 'fade', 0, 0],
-        ['Info', 0, 88, 100, 12, 2, 'contain', 'none', 0, 0],
+        ['Info', 0, 88, 100, 12, 2, 'contain', 'none', 0, 0, '', 70],
         ['Clock', 70, 2, 28, 12, 3, 'contain', 'none', 0, 0],
     ]);
     $item($z['Photo'], 'Music', 30);

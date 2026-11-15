@@ -109,7 +109,8 @@ function layout_data(int $layoutId, array &$mediaIds): ?array
             'timer' => (bool)$z['timer'],
             'items' => $items,
         ] + ((int)$z['radius'] > 0 ? ['radius' => (int)$z['radius']] : [])
-          + (zone_fade((string)$z['fade'])[0] !== '' ? ['fade' => ['edge' => zone_fade((string)$z['fade'])[0], 'size' => zone_fade((string)$z['fade'])[1]]] : []);
+          + (zone_fade((string)$z['fade'])[0] !== '' ? ['fade' => ['edge' => zone_fade((string)$z['fade'])[0], 'size' => zone_fade((string)$z['fade'])[1]]] : [])
+          + ((int)$z['opacity'] < 100 ? ['opacity' => max(0, (int)$z['opacity'])] : []);
     }
     return [
         'id' => (int)$layout['id'],

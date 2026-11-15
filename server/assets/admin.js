@@ -396,6 +396,7 @@
       // Same scale as the player: the radius is in pixels of a 1080-pixel-high screen.
       if (z.radius > 0) b.style.borderRadius = Math.min(stage.clientWidth, stage.clientHeight) * z.radius / 1080 + 'px';
       if (z.fade) applyFade(b, z.fade, z.fadeSize || 40);
+      if (z.opacity < 100) b.style.opacity = Math.max(0.15, z.opacity / 100); // stays visible enough to drag
       b.textContent = z.name;
       var hdl = document.createElement('div');
       hdl.className = 'handle';
@@ -452,6 +453,8 @@
         '<td class="zone-fade"><select data-k="fade" title="Fade the zone out towards an edge">' + options(cfg.fades, z.fade || '') + '</select>' +
           '<input data-k="fadeSize" type="number" min="5" max="100" step="5" value="' + (z.fadeSize || 40) + '" title="How far the fade reaches, in % of the zone"' +
           (z.fade ? '' : ' hidden') + '></td>' +
+        '<td class="zone-opacity"><input data-k="opacity" type="number" min="0" max="100" step="5" value="' + (z.opacity == null ? 100 : z.opacity) + '"' +
+          ' title="How solid the whole zone is, in %: 100 = solid, lower lets what is under the zone show through"></td>' +
         '<td><button type="button" class="btn btn-sm btn-danger zone-remove" title="Remove zone">✕</button></td>';
       tr.addEventListener('focusin', function () { select(i, false); });
       tr.querySelectorAll('[data-k]').forEach(function (inp) {
@@ -459,6 +462,7 @@
           var k = inp.getAttribute('data-k');
           if (k === 'timer') z[k] = inp.checked;
           else if (k === 'radius') z[k] = Math.max(0, Math.min(540, Math.round(Number(inp.value) || 0)));
+          else if (k === 'opacity') z[k] = Math.max(0, Math.min(100, Math.round(inp.value === '' ? 100 : Number(inp.value))));
           else if (k === 'fadeSize') z[k] = Math.max(5, Math.min(100, Math.round(Number(inp.value) || 40)));
           else z[k] = (k === 'name' || k === 'fit' || k === 'transition' || k === 'fade') ? inp.value : Number(inp.value);
           if (k === 'fade') tr.querySelector('[data-k="fadeSize"]').hidden = !z.fade;
@@ -533,7 +537,7 @@
 
   document.getElementById('zone-add').addEventListener('click', function () {
     var maxZ = zones.reduce(function (m, z) { return Math.max(m, z.z || 0); }, 0);
-    zones.push({ id: null, name: 'Zone ' + (zones.length + 1), x: 25, y: 25, w: 50, h: 50, z: maxZ + 1, fit: 'contain', transition: 'fade', timer: false, radius: 0, fade: '', fadeSize: 40 });
+    zones.push({ id: null, name: 'Zone ' + (zones.length + 1), x: 25, y: 25, w: 50, h: 50, z: maxZ + 1, fit: 'contain', transition: 'fade', timer: false, radius: 0, fade: '', fadeSize: 40, opacity: 100 });
     selected = zones.length - 1;
     dirty = true;
     renderAll();
@@ -551,7 +555,7 @@
       // Re-use existing zones (and their playlists) in order; extra zones are removed on save.
       zones = t.zones.map(function (tz, i) {
         var old = zones[i] || {};
-        return { id: old.id || null, name: old.id ? old.name : tz.name, x: tz.x, y: tz.y, w: tz.w, h: tz.h, z: i, fit: old.fit || 'contain', transition: old.transition || 'fade', timer: !!old.timer, radius: old.radius || 0, fade: old.fade || '', fadeSize: old.fadeSize || 40 };
+        return { id: old.id || null, name: old.id ? old.name : tz.name, x: tz.x, y: tz.y, w: tz.w, h: tz.h, z: i, fit: old.fit || 'contain', transition: old.transition || 'fade', timer: !!old.timer, radius: old.radius || 0, fade: old.fade || '', fadeSize: old.fadeSize || 40, opacity: old.opacity == null ? 100 : old.opacity };
       });
       selected = 0;
       dirty = true;

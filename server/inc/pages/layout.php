@@ -92,13 +92,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 empty($z['timer']) ? 0 : 1,
                 (int)$clamp($z['radius'] ?? 0, 0, 540),
                 implode(':', array_filter(zone_fade((string)($z['fade'] ?? '') . ':' . (int)($z['fadeSize'] ?? 40)), fn($v) => $v !== '' && $v !== 0)),
+                (int)$clamp($z['opacity'] ?? 100, 0, 100),
             ];
             $zid = (int)($z['id'] ?? 0);
             if ($zid && in_array($zid, $existing)) {
-                x('UPDATE zones SET name = ?, x = ?, y = ?, w = ?, h = ?, z = ?, fit = ?, transition = ?, timer = ?, radius = ?, fade = ? WHERE id = ?', [...$row, $zid]);
+                x('UPDATE zones SET name = ?, x = ?, y = ?, w = ?, h = ?, z = ?, fit = ?, transition = ?, timer = ?, radius = ?, fade = ?, opacity = ? WHERE id = ?', [...$row, $zid]);
                 $keep[] = $zid;
             } else {
-                x('INSERT INTO zones (name, x, y, w, h, z, fit, transition, timer, radius, fade, layout_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$row, $id]);
+                x('INSERT INTO zones (name, x, y, w, h, z, fit, transition, timer, radius, fade, opacity, layout_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...$row, $id]);
             }
         }
         foreach (array_diff($existing, $keep) as $gone) {
@@ -195,6 +196,7 @@ $editorZones = array_map(fn($z) => [
     'w' => (float)$z['w'], 'h' => (float)$z['h'], 'z' => (int)$z['z'], 'fit' => $z['fit'], 'transition' => $z['transition'],
     'timer' => (bool)$z['timer'], 'radius' => (int)$z['radius'],
     'fade' => zone_fade((string)$z['fade'])[0], 'fadeSize' => zone_fade((string)$z['fade'])[1] ?: 40,
+    'opacity' => (int)$z['opacity'],
 ], $zones);
 $templates = array_map(fn($t) => ['label' => $t['label'], 'zones' => array_map(
     fn($z) => ['name' => $z[0], 'x' => $z[1], 'y' => $z[2], 'w' => $z[3], 'h' => $z[4]], $t['zones'])], layout_templates());
@@ -251,7 +253,7 @@ page_header($layout['name'], 'layouts');
       </div>
       <div class="zone-list">
         <table class="table compact zone-table">
-          <thead><tr><th>Name</th><th>X</th><th>Y</th><th>W</th><th>H</th><th>Layer</th><th>Fit</th><th>Transition</th><th title="A thin bar at the bottom of the zone showing how long the item stays">Timer</th><th title="Rounded corners: radius in pixels on a 1080p screen (scaled on other screens), 0 = square">Corners</th><th title="Fade the zone out towards an edge, into the background or the zones under it. The number is how far the fade reaches, in % of the zone">Fade</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>X</th><th>Y</th><th>W</th><th>H</th><th>Layer</th><th>Fit</th><th>Transition</th><th title="A thin bar at the bottom of the zone showing how long the item stays">Timer</th><th title="Rounded corners: radius in pixels on a 1080p screen (scaled on other screens), 0 = square">Corners</th><th title="Fade the zone out towards an edge, into the background or the zones under it. The number is how far the fade reaches, in % of the zone">Fade</th><th title="How solid the whole zone is: 100 % = solid, lower lets the background or the zones under it show through">Opacity</th><th></th></tr></thead>
           <tbody id="zone-rows"></tbody>
         </table>
         <div class="row">

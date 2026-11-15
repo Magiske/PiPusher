@@ -459,6 +459,8 @@
       if (zc.radius > 0) ze.style.borderRadius = 'calc(min(var(--pp-w, 100vw), var(--pp-h, 100vh)) * ' + zc.radius / 1080 + ')';
       // Edge fade: the zone turns transparent towards an edge, showing the background or the zones under it.
       if (zc.fade) applyFade(ze, zc.fade.edge, zc.fade.size);
+      // Opacity of the whole zone (%): what is under it shows through.
+      if (zc.opacity != null && zc.opacity < 100) ze.style.opacity = Math.max(0, zc.opacity) / 100;
       zones.push(new Zone(ze, zc, media, onPass, onReady));
     });
     return { stage: stage, zones: zones };

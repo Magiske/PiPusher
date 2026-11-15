@@ -341,6 +341,10 @@ function migrate(PDO $pdo): void
             // Zone edge fade: "<edge>:<size %>" (see zone_fade()), '' = none.
             "ALTER TABLE zones ADD COLUMN fade TEXT NOT NULL DEFAULT ''",
         ],
+        27 => [
+            // Zone opacity in % (100 = solid): the whole zone shows the background or the zones under it through it.
+            'ALTER TABLE zones ADD COLUMN opacity INTEGER NOT NULL DEFAULT 100',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

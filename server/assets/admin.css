@@ -180,8 +180,12 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .mini-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .layout-preview { max-width: 240px; max-height: 160px; border-radius: 6px; background: #000; }
 
-.zone-editor { display: grid; grid-template-columns: minmax(300px, 1fr) auto; gap: 1.2rem; align-items: start; }
-@media (max-width: 1000px) { .zone-editor { grid-template-columns: 1fr; } }
+.zone-editor { display: grid; gap: 1.2rem; align-items: start; }
+/* The zone table goes under the stage so all its columns fit; the help text sits beside the stage. */
+.zone-editor { grid-template-columns: 1fr; }
+.zone-stage-wrap { display: grid; grid-template-columns: minmax(260px, 560px) 1fr; gap: 0 1.2rem; align-items: start; }
+.zone-stage-wrap .zone-stage.portrait { width: min(100%, calc(48vh * 9 / 16)); }
+@media (max-width: 760px) { .zone-stage-wrap { grid-template-columns: 1fr; } }
 /* isolation keeps the zone boxes' z-index (their layers) inside the stage, under the sticky top bar. */
 .zone-stage { position: relative; isolation: isolate; aspect-ratio: 16/9; width: 100%; border-radius: 6px; overflow: hidden; user-select: none; touch-action: none;
   background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
@@ -196,11 +200,13 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .zone-table [data-k="name"] { min-width: 14rem; }
 .zone-table [data-k="fit"] { min-width: 9rem; }
 .zone-table [data-k="transition"] { min-width: 7rem; }
-.zone-table input[type=number] { width: 4.5rem; min-width: 4.5rem; }
+.zone-table input[type=number] { width: 4rem; min-width: 4rem; padding-left: .4rem; padding-right: .2rem; }
+.zone-list { min-width: 0; overflow-x: auto; }
 .zone-table .zone-layer { white-space: nowrap; }
 .zone-table .zone-timer { text-align: center; }
-.zone-table .zone-radius input { width: 4.5rem; }
+.zone-table .zone-radius input { width: 4rem; }
 .zone-table .zone-fade { white-space: nowrap; }
+.zone-table .zone-opacity input { width: 3.6rem; min-width: 3.6rem; }
 .zone-table .zone-fade select { width: 6.2rem; padding-left: .35rem; padding-right: .1rem; }
 .zone-table .zone-fade input { width: 3.4rem; min-width: 3.4rem; margin-left: .2rem; padding-left: .35rem; padding-right: .1rem; }
 .zone-table .zone-layer .btn { padding-left: .4rem; padding-right: .4rem; }
