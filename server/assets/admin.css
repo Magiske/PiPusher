@@ -263,3 +263,49 @@ tr.log-warning td { background: rgba(229,165,10,.06); }
 .notify-rules td { vertical-align: middle; }
 .notify-rules input[type="number"] { width: 5.5rem; }
 .table .nowrap { white-space: nowrap; }
+
+/* Playlist: "only from time to time" and the schedule calendar */
+.freq-box { display: flex; flex-direction: column; gap: .4rem; justify-content: flex-end; }
+.freq-fields select { width: auto; }
+.cal-nav { gap: .4rem; align-items: center; }
+.cal-nav .seg { display: inline-flex; }
+.cal-nav .seg .btn { border-radius: 0; }
+.cal-nav .seg .btn:first-child { border-radius: 6px 0 0 6px; }
+.cal-nav .seg .btn:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+.cal-title { margin-left: .4rem; min-width: 11rem; }
+.cal { margin: .8rem 0 .4rem; overflow-x: auto; }
+.cal-week { display: grid; grid-template-columns: 3.2rem repeat(7, minmax(90px, 1fr)); min-width: 700px; }
+.cal-dayhead { height: 1.8rem; font-size: .85rem; text-align: center; color: var(--muted); }
+.cal-day.today .cal-dayhead { color: var(--primary); font-weight: 600; }
+.cal-col-body { position: relative; height: 480px; }
+.cal-day .cal-col-body { border-left: 1px solid var(--border); background: var(--surface); }
+.cal-day:last-child .cal-col-body { border-right: 1px solid var(--border); }
+.cal-week .cal-col-body { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.cal-day.today .cal-col-body { background: color-mix(in srgb, var(--primary) 5%, var(--surface)); }
+.cal-hours span { position: absolute; right: .4rem; transform: translateY(-50%); font-size: .72rem; color: var(--muted); }
+.cal-hours span:first-child { transform: none; }
+.cal-line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--border); }
+.cal-now { position: absolute; left: 0; right: 0; border-top: 2px solid var(--danger); z-index: 3; pointer-events: none; }
+.cal-fallback { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(45deg, transparent 0 6px, rgba(120,130,150,.13) 6px 12px); }
+.cal-entry { position: absolute; box-sizing: border-box; padding: .15rem .3rem; border-radius: 5px; border: 1px solid rgba(0,0,0,.08);
+  font-size: .75rem; line-height: 1.2; overflow: hidden; color: #10213a; text-decoration: none; z-index: 2; }
+.cal-entry:hover { filter: brightness(.95); outline: 2px solid var(--primary); }
+.cal-entry small { display: block; opacity: .75; }
+.cal-entry.freq { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.55) 0 5px, transparent 5px 10px); }
+.cal-entry.c0 { background-color: #c7dbff; } .cal-entry.c1 { background-color: #c9f0d9; } .cal-entry.c2 { background-color: #ffe0b3; }
+.cal-entry.c3 { background-color: #f3cdf0; } .cal-entry.c4 { background-color: #c8eef4; } .cal-entry.c5 { background-color: #fbd0d0; }
+.cal-entry.c6 { background-color: #e2dcff; } .cal-entry.c7 { background-color: #e9efc3; }
+.cal-month { display: grid; grid-template-columns: repeat(7, minmax(90px, 1fr)); border-top: 1px solid var(--border); border-left: 1px solid var(--border); min-width: 640px; }
+.cal-mhead { font-size: .8rem; color: var(--muted); text-align: center; padding: .3rem; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.cal-mday { min-height: 6.2rem; padding: .25rem; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface);
+  display: flex; flex-direction: column; gap: .15rem; }
+.cal-mday.other { background: var(--bg); opacity: .7; }
+.cal-mday.today { box-shadow: inset 0 0 0 2px var(--primary); }
+.cal-mnum { font-size: .8rem; color: var(--muted); }
+.cal-mday.today .cal-mnum { color: var(--primary); font-weight: 700; }
+.cal-entry.chip-entry { position: static; white-space: nowrap; text-overflow: ellipsis; }
+.cal-entry.chip-entry small { display: inline; }
+.cal-fb-label { font-size: .72rem; color: var(--muted); background: repeating-linear-gradient(45deg, transparent 0 6px, rgba(120,130,150,.13) 6px 12px);
+  border-radius: 5px; padding: .1rem .3rem; }
+.cal-fb-note { font-size: .7rem; color: var(--muted); }
+.freq-fields[hidden] { display: none; }

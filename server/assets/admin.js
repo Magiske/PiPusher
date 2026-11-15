@@ -565,3 +565,166 @@
   document.addEventListener('visibilitychange', refresh);
   setInterval(refresh, 10000);
 })();
+
+// Playlist entries: "Only from time to time" shows its fields only when ticked.
+(function () {
+  document.querySelectorAll('[data-freq]').forEach(function (box) {
+    var t = box.querySelector('[data-freq-toggle]'), f = box.querySelector('.freq-fields');
+    t.addEventListener('change', function () {
+      f.hidden = !t.checked;
+      if (t.checked) f.querySelector('input').focus();
+    });
+  });
+})();
+
+// Playlist schedule: week and month calendar of the entries' rules (same rules as entry_active() and the player).
+(function () {
+  var S = window.PP_SCHEDULE, root = document.querySelector('[data-cal]');
+  if (!S || !root) return;
+  var title = document.querySelector('[data-cal-title]');
+  var forced = document.documentElement.getAttribute('data-time-format');
+  var hour12 = forced === '12' || (forced !== '24' && (function () {
+    try {
+      var o = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions();
+      return o.hourCycle ? o.hourCycle === 'h12' || o.hourCycle === 'h11' : !!o.hour12;
+    } catch (e) { return false; }
+  })());
+  var view = 'week';
+  try { view = localStorage.getItem('pipusher-cal-view') === 'month' ? 'month' : 'week'; } catch (e) { /* no storage */ }
+  var p = S.today.split('-');
+  var today = new Date(+p[0], +p[1] - 1, +p[2]);
+  var cursor = new Date(today);
+  var COLORS = 8;
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function mins(hm) { var a = hm.split(':'); return +a[0] * 60 + +a[1]; }
+  function hourLabel(h) { return hour12 ? ((h % 12) || 12) + (h < 12 ? 'a' : 'p') : pad(h % 24) + ':00'; }
+  function timeLabel(m) {
+    var h = Math.floor(m / 60), mm = m % 60;
+    if (!hour12) return pad(h) + ':' + pad(mm);
+    return ((h % 12) || 12) + (mm ? ':' + pad(mm) : '') + (h < 12 || h === 24 ? 'am' : 'pm');
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fmtDate(d, opts) { try { return d.toLocaleDateString(undefined, opts); } catch (e) { return ymd(d); } }
+
+  // Does the entry play on this date (weekday and date range)?
+  function onDay(e, d) {
+    var iso = d.getDay() || 7, day = ymd(d);
+    if (e.days.length && e.days.indexOf(iso) < 0) return false;
+    if (e.dateFrom || e.dateTo) {
+      if (e.yearly) {
+        var md = day.slice(5), a = e.dateFrom ? e.dateFrom.slice(5) : '01-01', b = e.dateTo ? e.dateTo.slice(5) : '12-31';
+        if (a <= b ? !(md >= a && md <= b) : !(md >= a || md <= b)) return false;
+      } else if ((e.dateFrom && day < e.dateFrom) || (e.dateTo && day > e.dateTo)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  // Minutes of the day it plays: [[from, to], …]. A window crossing midnight plays at both ends of each matching day.
+  function segments(e) {
+    if (!e.from && !e.to) return [[0, 1440]];
+    var f = mins(e.from || '00:00'), t = e.to ? mins(e.to) : 1440;
+    return f <= t ? (f < t ? [[f, t]] : []) : [[0, t], [f, 1440]];
+  }
+  function block(e, cls, style, label) {
+    return '<a href="#entry-' + e.id + '" data-entry="' + e.id + '" class="cal-entry c' + ((e.num - 1) % COLORS) + (e.freq ? ' freq' : '') + ' ' + cls + '"'
+      + ' style="' + style + '" title="' + esc('#' + e.num + ' ' + e.name + ' · ' + e.when + (e.freq ? ' · ' + e.freq : '')) + '">' + label + '</a>';
+  }
+
+  function week() {
+    var start = addDays(cursor, -((cursor.getDay() || 7) - 1)), end = addDays(start, 6);
+    title.textContent = fmtDate(start, { day: 'numeric', month: 'short' }) + ' – ' + fmtDate(end, { day: 'numeric', month: 'short', year: 'numeric' });
+    var html = '<div class="cal-week"><div class="cal-hours"><div class="cal-dayhead"></div><div class="cal-col-body">';
+    for (var h = 0; h < 24; h += 3) html += '<span style="top:' + (h / 24 * 100) + '%">' + hourLabel(h) + '</span>';
+    html += '</div></div>';
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(start, i), isToday = ymd(d) === S.today;
+      var active = S.entries.filter(function (e) { return onDay(e, d) && segments(e).length; });
+      // Cover the day minute by minute to find where nothing plays (the fallback).
+      var covered = new Uint8Array(1440);
+      active.forEach(function (e) { segments(e).forEach(function (s) { for (var m = s[0]; m < s[1]; m++) covered[m] = 1; }); });
+      html += '<div class="cal-day' + (isToday ? ' today' : '') + '"><div class="cal-dayhead">' + esc(fmtDate(d, { weekday: 'short' })) + ' <b>' + d.getDate() + '</b></div><div class="cal-col-body">';
+      for (var h2 = 3; h2 < 24; h2 += 3) html += '<i class="cal-line" style="top:' + (h2 / 24 * 100) + '%"></i>';
+      for (var m = 0; m < 1440;) {
+        if (covered[m]) { m++; continue; }
+        var g = m;
+        while (g < 1440 && !covered[g]) g++;
+        html += '<div class="cal-fallback" style="top:' + (m / 14.4) + '%;height:' + ((g - m) / 14.4) + '%" title="' + esc('Fallback: ' + (S.fallback || 'blank screen')
+          + ' · ' + timeLabel(m) + '–' + timeLabel(g)) + '"></div>';
+        m = g;
+      }
+      var lanes = active.length;
+      active.forEach(function (e, lane) {
+        segments(e).forEach(function (s) {
+          var style = 'top:' + (s[0] / 14.4) + '%;height:' + ((s[1] - s[0]) / 14.4) + '%;left:' + (lane / lanes * 100) + '%;width:' + (100 / lanes) + '%';
+          var tall = s[1] - s[0] >= 90;
+          html += block(e, '', style, '<b>' + e.num + '</b>' + (tall ? ' ' + esc(e.name) + '<small>' + timeLabel(s[0]) + '–' + timeLabel(s[1]) + '</small>' : ''));
+        });
+      });
+      if (isToday) html += '<i class="cal-now" style="top:' + (S.now / 14.4) + '%"></i>';
+      html += '</div></div>';
+    }
+    root.innerHTML = html + '</div>';
+  }
+
+  function month() {
+    var first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    title.textContent = fmtDate(first, { month: 'long', year: 'numeric' });
+    var start = addDays(first, -((first.getDay() || 7) - 1));
+    var html = '<div class="cal-month">';
+    for (var w = 0; w < 7; w++) html += '<div class="cal-mhead">' + esc(fmtDate(addDays(start, w), { weekday: 'short' })) + '</div>';
+    for (var i = 0; i < 42; i++) {
+      var d = addDays(start, i);
+      if (i >= 35 && d.getMonth() !== first.getMonth()) break;
+      var active = S.entries.filter(function (e) { return onDay(e, d) && segments(e).length; });
+      var full = active.some(function (e) { var s = segments(e); return s.length === 1 && s[0][0] === 0 && s[0][1] === 1440; });
+      html += '<div class="cal-mday' + (d.getMonth() !== first.getMonth() ? ' other' : '') + (ymd(d) === S.today ? ' today' : '') + '">'
+        + '<div class="cal-mnum">' + d.getDate() + '</div>';
+      active.slice(0, 4).forEach(function (e) {
+        var s = segments(e), part = !(s.length === 1 && s[0][1] - s[0][0] === 1440);
+        html += block(e, 'chip-entry', '', '<b>' + e.num + '</b> ' + esc(e.name) + (part ? ' <small>' + esc((e.from || '00:00') + '–' + (e.to || '24:00')) + '</small>' : ''));
+      });
+      if (active.length > 4) html += '<span class="muted small">+' + (active.length - 4) + ' more</span>';
+      if (!active.length) html += '<span class="cal-fb-label">' + esc(S.fallback || 'blank') + '</span>';
+      else if (!full) html += '<span class="cal-fb-note" title="Some hours show the fallback">+ fallback</span>';
+      html += '</div>';
+    }
+    root.innerHTML = html + '</div>';
+  }
+
+  function render() {
+    document.querySelectorAll('[data-cal-view]').forEach(function (b) { b.classList.toggle('btn-primary', b.getAttribute('data-cal-view') === view); });
+    (view === 'week' ? week : month)();
+  }
+  document.querySelectorAll('[data-cal-view]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      view = b.getAttribute('data-cal-view');
+      try { localStorage.setItem('pipusher-cal-view', view); } catch (e) { /* no storage */ }
+      render();
+    });
+  });
+  document.querySelectorAll('[data-cal-go]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var n = +b.getAttribute('data-cal-go');
+      if (!n) cursor = new Date(today);
+      else if (view === 'week') cursor = addDays(cursor, 7 * n);
+      else cursor = new Date(cursor.getFullYear(), cursor.getMonth() + n, 1);
+      render();
+    });
+  });
+  // Clicking an entry opens it in the queue for editing.
+  root.addEventListener('click', function (ev) {
+    var a = ev.target.closest('[data-entry]');
+    if (!a) return;
+    ev.preventDefault();
+    var det = document.getElementById('entry-' + a.getAttribute('data-entry'));
+    if (det) {
+      det.open = true;
+      det.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+  render();
+})();

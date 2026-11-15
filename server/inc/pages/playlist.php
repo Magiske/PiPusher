@@ -17,10 +17,20 @@ function entry_fields(): array
     sort($days);
     $time = fn($k) => posted_time($k, ['' => '—']) ?? '';
     $date = fn($k) => posted_date($k) ?? '';
-    $typed = (string)($_POST['frequency'] ?? '');
+    // "Only from time to time": a kind and a number, turned into the stored form (t<seconds>, f<n>, <p>%).
+    $typed = '';
+    if (!empty($_POST['freq_on'])) {
+        $v = (float)str_replace(',', '.', (string)($_POST['freq_value'] ?? ''));
+        $typed = match ($_POST['freq_mode'] ?? '') {
+            'minutes' => $v > 0 ? 't' . max(1, (int)round($v * 60)) : 'x',
+            'nth' => $v >= 1 ? 'f' . (int)$v : 'x',
+            'percent' => $v > 0 ? rtrim(rtrim(number_format(min(100, $v), 2, '.', ''), '0'), '.') . '%' : 'x',
+            default => 'x',
+        };
+    }
     $freq = parse_frequency($typed);
     if ($freq === null) {
-        flash('Frequency not understood (use e.g. t60, f10 or 50%) – left empty.', 'error');
+        flash('"Only from time to time" needs a number above 0 – the entry now plays every time.', 'error');
     }
     return [
         // Empty = 0 = until the layout's content has played once (videos to the end).
@@ -101,13 +111,22 @@ function entry_form_fields(array $e, array $layouts): string
 {
     $dayNames = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'];
     $days = array_filter(explode(',', (string)$e['days']));
+    $f = parse_frequency((string)($e['frequency'] ?? '')) ?? [];
+    [$mode, $value] = isset($f['t']) ? ['minutes', rtrim(rtrim(number_format($f['t'] / 60, 2, '.', ''), '0'), '.')]
+        : (isset($f['n']) ? ['nth', (string)$f['n']] : (isset($f['p']) ? ['percent', (string)$f['p']] : ['minutes', '']));
     ob_start(); ?>
     <div class="entry-grid">
       <label>Layout <select name="layout_id" required><?= layout_options($e['layout_id'] ?? '') ?></select></label>
       <label>Show for (seconds) <input type="number" name="duration" min="5" max="86400" value="<?= (int)($e['duration'] ?? 0) ?: '' ?>" placeholder="auto" class="num">
         <span class="muted small">empty = until its content has played once</span></label>
-      <label>Frequency <input name="frequency" value="<?= h((string)($e['frequency'] ?? '')) ?>" placeholder="every time" class="num" spellcheck="false">
-        <span class="muted small">e.g. t60, f10 or 50% (see below)</span></label>
+      <div class="freq-box" data-freq>
+        <label class="check"><input type="checkbox" name="freq_on" value="1" data-freq-toggle <?= $f ? 'checked' : '' ?>> Only from time to time</label>
+        <div class="freq-fields row wrap align-end"<?= $f ? '' : ' hidden' ?>>
+          <select name="freq_mode" aria-label="How"><?= select_options(['minutes' => 'At most every … minutes', 'nth' => 'Every …th turn',
+              'percent' => 'In … % of its turns'], $mode) ?></select>
+          <input type="number" name="freq_value" min="0" step="any" value="<?= h($value) ?>" class="num" aria-label="Number">
+        </div>
+      </div>
       <fieldset class="days">
         <legend>Days <span class="muted small">(none = every day)</span></legend>
         <?php foreach ($dayNames as $n => $label): ?>
@@ -164,7 +183,7 @@ page_header($playlist['name'], 'playlists');
   <?php else: ?>
   <div class="entries">
     <?php foreach ($entries as $i => $e): $active = entry_active($e); ?>
-    <details class="entry <?= $active ? 'active' : '' ?>">
+    <details class="entry <?= $active ? 'active' : '' ?>" id="entry-<?= $e['id'] ?>">
       <summary>
         <span class="entry-num"><?= $i + 1 ?></span>
         <span class="entry-main"><strong><?= h($e['layout_name']) ?></strong>
@@ -194,6 +213,38 @@ page_header($playlist['name'], 'playlists');
   <?php endif; ?>
 </div>
 
+<?php if ($entries): ?>
+<div class="card" id="pl-schedule">
+  <div class="row wrap space-between align-end">
+    <h2>Schedule</h2>
+    <div class="row wrap cal-nav">
+      <span class="seg"><button type="button" class="btn btn-sm" data-cal-view="week">Week</button><button type="button" class="btn btn-sm" data-cal-view="month">Month</button></span>
+      <button type="button" class="btn btn-sm" data-cal-go="-1" aria-label="Previous">‹</button>
+      <button type="button" class="btn btn-sm" data-cal-go="0">Today</button>
+      <button type="button" class="btn btn-sm" data-cal-go="1" aria-label="Next">›</button>
+      <strong class="cal-title" data-cal-title></strong>
+    </div>
+  </div>
+  <div class="cal" data-cal></div>
+  <p class="muted small">What each screen plays by the rules above. Entries active at the same time take turns; striped
+    entries play only from time to time; grey is the fallback (<?= $playlist['fallback_layout_id'] ? h($layouts[$playlist['fallback_layout_id']] ?? '') : 'a blank screen' ?>).
+    Click an entry to edit it.</p>
+</div>
+<script>
+window.PP_SCHEDULE = <?= json_encode([
+    'today' => date('Y-m-d'),
+    'now' => (int)date('G') * 60 + (int)date('i'),
+    'fallback' => $playlist['fallback_layout_id'] ? ($layouts[$playlist['fallback_layout_id']] ?? '') : '',
+    'entries' => array_map(fn($i, $e) => [
+        'id' => (int)$e['id'], 'num' => $i + 1, 'name' => $e['layout_name'],
+        'days' => array_map('intval', array_filter(explode(',', (string)$e['days']))),
+        'from' => $e['time_from'], 'to' => $e['time_to'], 'dateFrom' => $e['date_from'], 'dateTo' => $e['date_to'],
+        'yearly' => (bool)$e['yearly'], 'freq' => describe_frequency((string)$e['frequency']), 'when' => describe_when($e),
+    ], array_keys($entries), $entries),
+], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<?php endif; ?>
+
 <div class="card">
   <h2>Add a layout</h2>
   <?php if (!$layouts): ?>
@@ -206,10 +257,10 @@ page_header($playlist['name'], 'playlists');
   </form>
   <p class="muted small" data-local-times>Examples: <em>Mon–Fri 08:00–16:00</em> for opening hours · <em>1 Dec – 26 Dec, every year</em> for Christmas ·
     a single date range for an event.</p>
-  <p class="muted small"><strong>Frequency</strong> (empty = every time): <code>t60</code> plays it when 60 seconds have
-    passed since it last played (<code>t5m</code>, <code>t1h</code> work too), <code>f10</code> (or <code>%10</code>) every
-    10th time its turn comes, <code>50%</code> half of its turns (spread evenly). When it isn't its turn, the queue moves on to the next
-    layout; if no layout has its turn, the screen shows the fallback until one does.</p>
+  <p class="muted small"><strong>Only from time to time</strong> (unticked = every time its turn comes): <em>at most every
+    … minutes</em> plays it when that long has passed since it last played, <em>every …th turn</em> plays it every 10th time
+    its turn comes (for 10), <em>in … % of its turns</em> plays it in that share of its turns, spread evenly. When it isn't
+    its turn, the queue moves on to the next layout; if no layout has its turn, the screen shows the fallback until one does.</p>
   <?php endif; ?>
 </div>
 <?php page_footer();
