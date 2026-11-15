@@ -9,6 +9,20 @@ const PP_ORIENTATIONS = [
 ];
 const PP_FITS = ['contain' => 'Contain', 'cover' => 'Cover (crop)', 'fill' => 'Stretch'];
 const PP_TRANSITIONS = ['fade' => 'Fade', 'none' => 'None', 'slide' => 'Slide'];
+// Zone edge fade: the zone becomes transparent towards these edges (shows the background or the zones under it).
+const PP_ZONE_FADES = ['' => 'None', 'left' => '← Left', 'right' => '→ Right', 'top' => '↑ Top', 'bottom' => '↓ Bottom',
+    'x' => '↔ Left + right', 'y' => '↕ Top + bottom', 'all' => '◻ All edges'];
+
+/** A zone's fade as stored ("left:40" = fade over 40 % of the width from the left edge), or ['', 0] for none. */
+function zone_fade(string $v): array
+{
+    [$edge, $size] = array_pad(explode(':', $v, 2), 2, '');
+    if ($edge === '' || !isset(PP_ZONE_FADES[$edge])) {
+        return ['', 0];
+    }
+    $max = in_array($edge, ['x', 'y', 'all'], true) ? 50 : 100;
+    return [$edge, max(5, min($max, (int)$size ?: 40))];
+}
 // What a zone does when an item's duration runs out: go on to the next item, or stop there.
 const PP_AFTER = ['repeat' => 'Repeat', 'fadeout' => 'Fade out', 'exit' => 'Exit', 'hold' => 'Hold'];
 const PP_COMMANDS = ['reload' => 'Reload player', 'sync' => 'Sync now', 'reboot' => 'Reboot device', 'screenshot' => 'Take screenshot', 'update' => 'Update client'];

@@ -423,6 +423,23 @@
     }).catch(function () {});
   }
 
+  // A CSS mask that is transparent at the edge(s) and solid after size % of the zone (eased over the first half).
+  function fadeMask(edge, size) {
+    var lin = function (dir) {
+      var both = dir === 'to right' && (edge === 'x' || edge === 'all') || dir === 'to bottom' && (edge === 'y' || edge === 'all');
+      return 'linear-gradient(' + dir + ',transparent,rgba(0,0,0,.5) ' + size * 0.45 + '%,#000 ' + size + '%' +
+        (both ? ',#000 ' + (100 - size) + '%,rgba(0,0,0,.5) ' + (100 - size * 0.45) + '%,transparent' : '') + ')';
+    };
+    return { left: lin('to right'), right: lin('to left'), top: lin('to bottom'), bottom: lin('to top'),
+      x: lin('to right'), y: lin('to bottom'), all: lin('to right') + ',' + lin('to bottom') }[edge] || '';
+  }
+  function applyFade(node, edge, size) {
+    var m = fadeMask(edge, size);
+    if (!m) return;
+    node.style.webkitMaskImage = node.style.maskImage = m;
+    if (edge === 'all') { node.style.webkitMaskComposite = 'source-in'; node.style.maskComposite = 'intersect'; }
+  }
+
   function buildLayout(L, media, onPass, onReady) {
     var rot = ROTATION[L.orientation] || 0;
     var stage = el('div', 'pp-stage pp-layout', root);
@@ -440,6 +457,8 @@
       ze.style.zIndex = zc.z;
       // Rounded corners: radius in pixels of a 1080p screen, scaled to this screen (the shorter side of the area).
       if (zc.radius > 0) ze.style.borderRadius = 'calc(min(var(--pp-w, 100vw), var(--pp-h, 100vh)) * ' + zc.radius / 1080 + ')';
+      // Edge fade: the zone turns transparent towards an edge, showing the background or the zones under it.
+      if (zc.fade) applyFade(ze, zc.fade.edge, zc.fade.size);
       zones.push(new Zone(ze, zc, media, onPass, onReady));
     });
     return { stage: stage, zones: zones };

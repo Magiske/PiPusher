@@ -337,6 +337,10 @@ function migrate(PDO $pdo): void
             'ALTER TABLE playlist_items_new RENAME TO playlist_items',
             'CREATE INDEX idx_items_zone ON playlist_items(zone_id)',
         ],
+        26 => [
+            // Zone edge fade: "<edge>:<size %>" (see zone_fade()), '' = none.
+            "ALTER TABLE zones ADD COLUMN fade TEXT NOT NULL DEFAULT ''",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

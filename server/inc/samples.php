@@ -56,7 +56,7 @@ function install_samples(): string
     };
     $welcome = $text('Welcome', [['Welcome to', 'label'], ['Harbour Café', 'title', 1.4], ['Fresh coffee · open 07–18', 'text', 1.4]], []);
     $text('Today\'s special', [['Today\'s special', 'label', 1.4], ['Cinnamon bun + coffee', 'title'], ['€ 6.50', 'badge', 1.9, '#9a3412', '#ffffff']],
-        ['Food', 'Promotion']);
+        ['Promotion']);
     $text('Live music on Fridays', [['Every Friday from 20:00', 'label', 1.4], ['Live music', 'title', 1.4], ['Free entry · all welcome', 'text', 1.4]],
         ['Music', 'Promotion']);
     $opening = $text('Opening offer (ends by itself)', [['Opening weeks', 'label', 1.4], ['2 for 1 on all coffee', 'title'],
@@ -89,15 +89,17 @@ function install_samples(): string
         'place' => '', 'size' => 0.92], $folder);
 
     // ---------- Layouts ----------
-    // $zones: [name, x, y, w, h, layer (higher = on top), fit, transition, timer, corner radius]
+    // $zones: [name, x, y, w, h, layer (higher = on top), fit, transition, timer, corner radius, fade ("left:50" = fade
+    // over 50 % of the zone from its left edge into the background or the zones under it)]
     $layout = function (string $name, string $orientation, string $background, array $zones) use ($layoutFolder): array {
         x('INSERT INTO layouts (name, orientation, background, folder_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
             [$name, $orientation, $background, $layoutFolder, now(), now()]);
         $id = last_id();
         $ids = [];
-        foreach ($zones as [$zn, $zx, $zy, $zw, $zh, $zz, $fit, $tr, $timer, $radius]) {
-            x('INSERT INTO zones (layout_id, name, x, y, w, h, z, fit, transition, timer, radius) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [$id, $zn, $zx, $zy, $zw, $zh, $zz, $fit, $tr, $timer, $radius]);
+        foreach ($zones as $zd) {
+            [$zn, $zx, $zy, $zw, $zh, $zz, $fit, $tr, $timer, $radius] = $zd;
+            x('INSERT INTO zones (layout_id, name, x, y, w, h, z, fit, transition, timer, radius, fade) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [$id, $zn, $zx, $zy, $zw, $zh, $zz, $fit, $tr, $timer, $radius, $zd[10] ?? '']);
             $ids[$zn] = last_id();
         }
         return [$id, $ids];
@@ -109,10 +111,11 @@ function install_samples(): string
             [$zone, is_int($content) ? $content : null, is_int($content) ? '' : $content, $duration, $after, $pos]);
     };
 
-    // Day: messages (Welcome, then everything tagged Promotion that shows today) beside rounded food photos.
-    [$day, $z] = $layout('Café – day', 'landscape', '#13294b', [
-        ['Messages', 0, 0, 46, 88, 0, 'contain', 'slide', 1, 0],
-        ['Photos', 47, 4, 29, 80, 1, 'cover', 'fade', 0, 40],
+    // Day: messages (Welcome, then everything tagged Promotion that shows today) over food photos that fade into the
+    // blue background on both sides, and a clock sidebar.
+    [$day, $z] = $layout('Café – day', 'landscape', '#172f6e', [
+        ['Photos', 30, 0, 47, 88, 0, 'cover', 'fade', 0, 0, 'x:35'],
+        ['Messages', 0, 0, 50, 88, 1, 'contain', 'slide', 1, 0],
         ['Clock', 77, 0, 23, 88, 2, 'contain', 'fade', 0, 0],
         ['Info', 0, 88, 100, 12, 3, 'contain', 'none', 0, 0],
     ]);
@@ -122,9 +125,9 @@ function install_samples(): string
     $item($z['Clock'], $clock, 60);
     $item($z['Info'], $ticker, 60);
 
-    // Evening: a text zone on top of a full-screen photo; the text holds on screen.
-    [$evening, $z] = $layout('Café – evening', 'landscape', '#000000', [
-        ['Photo', 0, 0, 100, 88, 0, 'cover', 'fade', 0, 0],
+    // Evening: a text zone on top of a photo that fades into the purple background; the text holds on screen.
+    [$evening, $z] = $layout('Café – evening', 'landscape', '#2e1065', [
+        ['Photo', 20, 0, 80, 88, 0, 'cover', 'fade', 0, 0, 'left:55'],
         ['Text', 0, 0, 60, 88, 1, 'contain', 'fade', 0, 0],
         ['Info', 0, 88, 100, 12, 2, 'contain', 'none', 0, 0],
         ['Clock', 70, 2, 28, 12, 3, 'contain', 'none', 0, 0],
@@ -134,9 +137,9 @@ function install_samples(): string
     $item($z['Clock'], $clockRow, 60);
     $item($z['Info'], $ticker, 60);
 
-    // Christmas: the Christmas tag over a rounded café photo.
+    // Christmas: the Christmas tag beside a café photo that fades into the red background on the left.
     [$xmas, $z] = $layout('Café – Christmas', 'landscape', '#7f1d1d', [
-        ['Photo', 50, 6, 46, 76, 0, 'cover', 'fade', 0, 60],
+        ['Photo', 40, 0, 60, 88, 0, 'cover', 'fade', 0, 0, 'left:50'],
         ['Text', 3, 0, 50, 88, 1, 'contain', 'fade', 0, 0],
         ['Info', 0, 88, 100, 12, 2, 'contain', 'none', 0, 0],
     ]);

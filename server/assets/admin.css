@@ -200,6 +200,9 @@ dl.kv dd { margin: 0; word-break: break-word; }
 .zone-table .zone-layer { white-space: nowrap; }
 .zone-table .zone-timer { text-align: center; }
 .zone-table .zone-radius input { width: 4.5rem; }
+.zone-table .zone-fade { white-space: nowrap; }
+.zone-table .zone-fade select { width: 6.2rem; padding-left: .35rem; padding-right: .1rem; }
+.zone-table .zone-fade input { width: 3.4rem; min-width: 3.4rem; margin-left: .2rem; padding-left: .35rem; padding-right: .1rem; }
 .zone-table .zone-layer .btn { padding-left: .4rem; padding-right: .4rem; }
 .zone-table .zone-layer span { margin-left: .3rem; }
 

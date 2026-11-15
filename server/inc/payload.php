@@ -108,7 +108,8 @@ function layout_data(int $layoutId, array &$mediaIds): ?array
             'transition' => $z['transition'],
             'timer' => (bool)$z['timer'],
             'items' => $items,
-        ] + ((int)$z['radius'] > 0 ? ['radius' => (int)$z['radius']] : []);
+        ] + ((int)$z['radius'] > 0 ? ['radius' => (int)$z['radius']] : [])
+          + (zone_fade((string)$z['fade'])[0] !== '' ? ['fade' => ['edge' => zone_fade((string)$z['fade'])[0], 'size' => zone_fade((string)$z['fade'])[1]]] : []);
     }
     return [
         'id' => (int)$layout['id'],
