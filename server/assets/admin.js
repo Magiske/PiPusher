@@ -258,6 +258,31 @@
     shape.addEventListener('change', reshape);
     if (lines) lines.querySelectorAll('textarea').forEach(grow);
     sync(); reshape();
+
+    // Clock editor: find a place's position (open-meteo geocoding, no key needed).
+    var find = document.getElementById('clock-find');
+    if (find) {
+      var place = document.getElementById('clock-place'), found = document.getElementById('clock-found');
+      var lookup = function () {
+        if (!place.value.trim()) return;
+        find.disabled = true;
+        fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name=' + encodeURIComponent(place.value.trim()))
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var g = j.results && j.results[0];
+            if (!g) { found.textContent = 'No place called "' + place.value + '" found. Try another spelling, or enter the position.'; return; }
+            document.getElementById('clock-lat').value = Math.round(g.latitude * 1e4) / 1e4;
+            document.getElementById('clock-lon').value = Math.round(g.longitude * 1e4) / 1e4;
+            place.value = g.name;
+            found.textContent = 'Found ' + [g.name, g.admin1, g.country].filter(Boolean).join(', ') + '.';
+            later();
+          })
+          .catch(function () { found.textContent = 'Could not reach the place search. Enter the position yourself.'; })
+          .then(function () { find.disabled = false; });
+      };
+      find.addEventListener('click', lookup);
+      place.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); lookup(); } });
+    }
   }
 
   // Live screen status (online dot, last seen, thumbnails) on the Screens list and screen page.

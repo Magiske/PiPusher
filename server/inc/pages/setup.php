@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_setting('poll_interval', '60');
         if (!empty($_POST['samples'])) {
             require PP_ROOT . '/inc/samples.php';
-            set_setting('default_layout', (string)install_samples());
+            set_setting('default_layout', install_samples()); // the samples' playlist plays on new screens
         }
         login_user($admin);
         log_info('Setup: first administrator created', ['samples' => !empty($_POST['samples'])]);
@@ -34,7 +34,7 @@ page_header('Setup');
     <label>Username <input name="username" required value="<?= h($_POST['username'] ?? 'admin') ?>"></label>
     <label>Password <input type="password" name="password" required minlength="8"></label>
     <label>Repeat password <input type="password" name="password2" required minlength="8"></label>
-    <label class="check"><input type="checkbox" name="samples" value="1" checked> Add sample pages and a demo layout</label>
+    <label class="check"><input type="checkbox" name="samples" value="1" checked> Add samples: a café with photos, texts, a ticker, a clock, tags, four layouts and a scheduled playlist</label>
     <button class="btn btn-primary">Create account</button>
   </form>
 </div>
