@@ -28,6 +28,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($do === 'save') {
         x('UPDATE media SET name = ?, folder_id = ?, updated_at = ? WHERE id = ?',
             [trim((string)$_POST['name']) ?: $m['name'], valid_folder_id($_POST['folder_id'] ?? null), now(), $id]);
+        $from = posted_date('starts_on');
+        $until = posted_date('ends_on');
+        if ($from === null || $until === null) {
+            flash('A show date is not a valid date – dates not changed.', 'error');
+        } elseif ($from !== '' && $until !== '' && $until < $from) {
+            flash('"Show until" is before "Show from" – dates not changed.', 'error');
+        } else {
+            x('UPDATE media SET starts_on = ?, ends_on = ? WHERE id = ?', [$from, $until, $id]);
+        }
+        set_media_tags($id, tags_parse((string)($_POST['tags'] ?? '')));
         if ($m['type'] === 'html' && isset($_POST['content']) && $entryPath) {
             file_put_contents($entryPath, str_replace("\r\n", "\n", (string)$_POST['content']));
             reindex_media($id);
@@ -86,6 +96,15 @@ page_header($m['name'], 'media');
   <div class="card stack">
     <label>Name <input name="name" value="<?= h($m['name']) ?>" required></label>
     <label>Folder <select name="folder_id"><?= folder_options($m['folder_id'] ? (int)$m['folder_id'] : null) ?></select></label>
+    <label>Tags <input name="tags" value="<?= h(implode(', ', media_tags($id))) ?>" list="tag-list" placeholder="e.g. Christmas, Promotion, Food" autocomplete="off"></label>
+    <datalist id="tag-list"><?php foreach (array_keys(all_tags()) as $t): ?><option value="<?= h($t) ?>"><?php endforeach; ?></datalist>
+    <div class="row wrap align-end">
+      <label>Show from <?= date_select('starts_on', (string)$m['starts_on']) ?></label>
+      <label>Show until <?= date_select('ends_on', (string)$m['ends_on']) ?></label>
+      <?= media_schedule_badge($m) ?>
+    </div>
+    <p class="muted small">Separate tags with commas. A zone can play all media with a tag (Layouts → zone → Add content → 🏷).
+      Outside its dates the item is left out of every zone and tag, from the first sync of the day (both days included; empty = no limit).</p>
     <?php if ($m['type'] === 'url'): ?>
       <label>URL <input name="url" type="url" value="<?= h($m['url']) ?>" required></label>
       <label>Cookies <span class="muted small">(optional, one per line: name=value)</span>

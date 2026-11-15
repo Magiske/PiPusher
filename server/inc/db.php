@@ -310,6 +310,33 @@ function migrate(PDO $pdo): void
             )',
             'CREATE INDEX notifications_ts ON notifications (ts)',
         ],
+        25 => [
+            // Media shown only between two dates (YYYY-MM-DD, '' = open), and tags (inc/tags.php).
+            "ALTER TABLE media ADD COLUMN starts_on TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE media ADD COLUMN ends_on TEXT NOT NULL DEFAULT ''",
+            'CREATE TABLE media_tags (
+                media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+                tag TEXT NOT NULL COLLATE NOCASE,
+                PRIMARY KEY (media_id, tag)
+            )',
+            'CREATE INDEX media_tags_tag ON media_tags (tag)',
+            // A zone item is either one media item or a tag (every media item with that tag): media_id becomes optional.
+            "CREATE TABLE playlist_items_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                zone_id INTEGER NOT NULL REFERENCES zones(id) ON DELETE CASCADE,
+                media_id INTEGER REFERENCES media(id) ON DELETE CASCADE,
+                tag TEXT NOT NULL DEFAULT '' COLLATE NOCASE,
+                duration INTEGER NOT NULL DEFAULT 10,
+                position INTEGER NOT NULL DEFAULT 0,
+                size TEXT NOT NULL DEFAULT '',
+                after TEXT NOT NULL DEFAULT 'repeat'
+            )",
+            'INSERT INTO playlist_items_new (id, zone_id, media_id, duration, position, size, after)
+             SELECT id, zone_id, media_id, duration, position, size, after FROM playlist_items',
+            'DROP TABLE playlist_items',
+            'ALTER TABLE playlist_items_new RENAME TO playlist_items',
+            'CREATE INDEX idx_items_zone ON playlist_items(zone_id)',
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

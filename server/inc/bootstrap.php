@@ -25,6 +25,7 @@ require __DIR__ . '/functions.php';
 require __DIR__ . '/payload.php';
 require __DIR__ . '/text.php';
 require __DIR__ . '/ticker.php';
+require __DIR__ . '/tags.php';
 require __DIR__ . '/totp.php';
 require __DIR__ . '/log.php';
 require __DIR__ . '/mail.php';

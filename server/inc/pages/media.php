@@ -24,6 +24,8 @@ HTML;
 $folderId = valid_folder_id($_GET['folder'] ?? null);
 $filter = in_array($_GET['type'] ?? '', ['html', 'text', 'ticker', 'image', 'video', 'url'], true) ? $_GET['type'] : '';
 $search = trim((string)($_GET['q'] ?? ''));
+$tagFilter = tag_clean((string)($_GET['tag'] ?? ''));
+$when = in_array($_GET['when'] ?? '', ['active', 'scheduled', 'expired'], true) ? $_GET['when'] : '';
 $here = fn(?int $fid = null) => url(array_filter(['p' => 'media', 'folder' => $fid, 'type' => $filter ?: null]));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -94,6 +96,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         delete_media((int)$_POST['id']);
         log_info('Media deleted: ' . ($gone['name'] ?? '#' . (int)$_POST['id']));
         flash('Media deleted.');
+    } elseif ($do === 'tag_add' || $do === 'tag_remove') {
+        $ids = array_filter(array_map('intval', (array)($_POST['ids'] ?? [])));
+        $tag = tag_clean((string)($_POST['tag'] ?? ''));
+        if ($tag !== '') {
+            foreach ($ids as $mid) {
+                $do === 'tag_add' ? add_media_tag($mid, $tag) : remove_media_tag($mid, $tag);
+            }
+            flash(count($ids) . ' item(s): tag "' . $tag . '" ' . ($do === 'tag_add' ? 'added.' : 'removed.'));
+        } else {
+            flash('Type a tag first.', 'error');
+        }
+        redirect((string)($_POST['back'] ?? '') !== '' && str_starts_with((string)$_POST['back'], 'index.php?') ? (string)$_POST['back'] : $here($folderId));
     } elseif ($do === 'move') {
         $ids = array_filter(array_map('intval', (array)($_POST['ids'] ?? [])));
         foreach ($ids as $mid) {
@@ -128,9 +142,23 @@ $current = $folderId ? $folders[$folderId] : null;
 $subfolders = array_filter($folders, fn($f) => (int)$f['parent_id'] === (int)$folderId);
 $where = [];
 $params = [];
-if ($search !== '') {
-    $where[] = 'm.name LIKE ?';
-    $params[] = '%' . $search . '%';
+if ($search !== '' || $tagFilter !== '' || $when !== '') {
+    // Search, tag and date filters look in all folders.
+    if ($search !== '') {
+        $where[] = 'm.name LIKE ?';
+        $params[] = '%' . $search . '%';
+    }
+    if ($tagFilter !== '') {
+        $where[] = 'm.id IN (SELECT media_id FROM media_tags WHERE tag = ?)';
+        $params[] = $tagFilter;
+    }
+    if ($when === 'active') {
+        $where[] = media_active_sql();
+    } elseif ($when === 'scheduled') {
+        $where[] = "m.starts_on > '" . today() . "'";
+    } elseif ($when === 'expired') {
+        $where[] = "m.ends_on <> '' AND m.ends_on < '" . today() . "'";
+    }
 } else {
     $where[] = $folderId ? 'm.folder_id = ?' : 'm.folder_id IS NULL';
     if ($folderId) {
@@ -141,8 +169,16 @@ if ($filter) {
     $where[] = 'm.type = ?';
     $params[] = $filter;
 }
+if (!$where) {
+    $where[] = '1';
+}
 $items = q('SELECT m.*, (SELECT COUNT(*) FROM playlist_items p WHERE p.media_id = m.id) AS uses FROM media m
             WHERE ' . implode(' AND ', $where) . ' ORDER BY m.name COLLATE NOCASE', $params);
+$itemTags = media_tags_map(array_map(fn($m) => (int)$m['id'], $items));
+$allTags = all_tags();
+$filtering = $search !== '' || $tagFilter !== '' || $when !== '';
+$link = fn(array $over) => url(array_filter(array_merge(['p' => 'media', 'folder' => $filtering ? null : $folderId, 'type' => $filter ?: null,
+    'q' => $search ?: null, 'tag' => $tagFilter ?: null, 'when' => $when ?: null], $over)));
 $counts = [];
 foreach (q('SELECT folder_id, COUNT(*) AS n FROM media WHERE folder_id IS NOT NULL GROUP BY folder_id') as $r) {
     $counts[(int)$r['folder_id']] = (int)$r['n'];
@@ -165,12 +201,25 @@ page_header($current ? $current['name'] : 'Media', 'media');
 </div>
 <div class="row wrap" style="margin-bottom:1rem">
   <?php foreach (['' => 'All types', 'text' => 'Text', 'ticker' => 'Tickers', 'html' => 'HTML', 'image' => 'Images', 'video' => 'Videos', 'url' => 'Links'] as $k => $label): ?>
-    <a class="chip <?= $filter === $k ? 'active' : '' ?>" href="<?= url(array_filter(['p' => 'media', 'folder' => $folderId, 'type' => $k ?: null, 'q' => $search ?: null])) ?>"><?= h($label) ?></a>
+    <a class="chip <?= $filter === $k ? 'active' : '' ?>" href="<?= $link(['type' => $k ?: null]) ?>"><?= h($label) ?></a>
+  <?php endforeach; ?>
+  <span class="chip-sep"></span>
+  <?php foreach (['active' => 'Showing today', 'scheduled' => 'Starts later', 'expired' => 'Expired'] as $k => $label): ?>
+    <a class="chip <?= $when === $k ? 'active' : '' ?>" href="<?= $link(['when' => $when === $k ? null : $k]) ?>"><?= h($label) ?></a>
   <?php endforeach; ?>
 </div>
+<?php if ($allTags): ?>
+<div class="row wrap tag-filter">
+  <span class="muted small">Tags:</span>
+  <?php foreach ($allTags as $t => $n): $on = mb_strtolower($t) === mb_strtolower($tagFilter); ?>
+    <a class="chip <?= $on ? 'active' : '' ?>" href="<?= $link(['tag' => $on ? null : $t]) ?>">🏷 <?= h($t) ?> <span class="small">(<?= $n ?>)</span></a>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
-<?php if ($search !== ''): ?>
-  <p class="muted"><?= count($items) ?> result(s) for “<?= h($search) ?>” in all folders · <a href="<?= $here($folderId) ?>">clear search</a></p>
+<?php if ($filtering): ?>
+  <p class="muted"><?= count($items) ?> item(s)<?= $search !== '' ? ' named like “' . h($search) . '”' : '' ?><?= $tagFilter !== '' ? ' tagged “' . h($tagFilter) . '”' : '' ?><?= $when !== '' ? ' (' . ['active' => 'showing today', 'scheduled' => 'starting later', 'expired' => 'expired'][$when] . ')' : '' ?>
+    in all folders · <a href="<?= $here($folderId) ?>">clear filters</a></p>
 <?php else: ?>
 <div class="folder-grid">
   <?php foreach ($subfolders as $fid => $f): ?>
@@ -235,7 +284,7 @@ page_header($current ? $current['name'] : 'Media', 'media');
 </details>
 
 <?php if (!$items): ?>
-  <?php if ($search !== '' || !$subfolders): ?><div class="card empty"><p class="muted"><?= $search !== '' ? 'Nothing found.' : 'This folder is empty.' ?></p></div><?php endif; ?>
+  <?php if ($filtering || !$subfolders): ?><div class="card empty"><p class="muted"><?= $filtering ? 'Nothing found.' : 'This folder is empty.' ?></p></div><?php endif; ?>
 <?php else: ?>
 <form method="post" id="media-select">
   <?= csrf_field() ?><input type="hidden" name="do" value="move">
@@ -245,6 +294,11 @@ page_header($current ? $current['name'] : 'Media', 'media');
     <span class="grow"></span>
     <label class="row">Move to <select name="folder_id"><?= folder_options($folderId) ?></select></label>
     <button class="btn" data-needs-selection disabled>Move</button>
+    <input type="hidden" name="back" value="<?= h(ltrim($link([]), '/')) ?>">
+    <label class="row">Tag <input name="tag" list="tag-list-bulk" placeholder="Christmas" class="num-wide"></label>
+    <datalist id="tag-list-bulk"><?php foreach (array_keys($allTags) as $t): ?><option value="<?= h($t) ?>"><?php endforeach; ?></datalist>
+    <button class="btn" name="do" value="tag_add" data-needs-selection disabled>Add tag</button>
+    <button class="btn" name="do" value="tag_remove" data-needs-selection disabled>Remove tag</button>
   </div>
 </form>
 <div class="media-grid">
@@ -261,7 +315,10 @@ page_header($current ? $current['name'] : 'Media', 'media');
       <?= type_badge($m['type']) ?>
       <a href="<?= url(['p' => 'media_edit', 'id' => $m['id']]) ?>" class="media-name"><?= h($m['name']) ?></a>
     </div>
-    <?php if ($search !== '' && $m['folder_id']): ?><span class="muted small">📁 <?= h($folders[(int)$m['folder_id']]['path'] ?? '') ?></span><?php endif; ?>
+    <?php if ($filtering && $m['folder_id']): ?><span class="muted small">📁 <?= h($folders[(int)$m['folder_id']]['path'] ?? '') ?></span><?php endif; ?>
+    <?php if (!empty($itemTags[(int)$m['id']]) || media_dates_label($m) !== ''): ?>
+      <div class="media-tags"><?= media_schedule_badge($m) ?><?php foreach ($itemTags[(int)$m['id']] ?? [] as $t): ?><?= tag_chip($t, $link(['tag' => $t])) ?><?php endforeach; ?></div>
+    <?php endif; ?>
     <div class="row space-between">
       <span class="muted small"><?= $m['type'] === 'url' ? 'live link' : h(human_size((int)$m['size'])) ?> · used <?= (int)$m['uses'] ?>×</span>
       <?= post_button(['do' => 'delete', 'id' => $m['id']], 'Delete', 'btn btn-sm btn-danger',

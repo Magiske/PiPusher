@@ -73,16 +73,31 @@ function layout_data(int $layoutId, array &$mediaIds): ?array
     $zones = [];
     foreach (q('SELECT * FROM zones WHERE layout_id = ? ORDER BY z, id', [$layoutId]) as $z) {
         $items = [];
-        foreach (q('SELECT media_id, duration, size, after FROM playlist_items WHERE zone_id = ? ORDER BY position, id', [$z['id']]) as $it) {
-            $item = ['media' => (int)$it['media_id'], 'duration' => (int)$it['duration']];
-            if ($it['size'] !== '') {
-                $item['size'] = $it['size'];
+        foreach (q('SELECT p.*, m.type, m.starts_on, m.ends_on FROM playlist_items p LEFT JOIN media m ON m.id = p.media_id
+                    WHERE p.zone_id = ? ORDER BY p.position, p.id', [$z['id']]) as $it) {
+            // A tag plays every media item with it that shows today; one media item only on its own dates.
+            if ($it['media_id'] === null) {
+                $list = $it['tag'] !== '' ? tag_media((string)$it['tag']) : [];
+            } else {
+                $list = media_schedule($it) === 'active' ? [['id' => $it['media_id'], 'type' => $it['type']]] : [];
             }
-            if ($it['after'] !== 'repeat') {
-                $item['after'] = $it['after'];
+            foreach ($list as $i => $m) {
+                // A tag's duration 0 (empty) = automatic: videos to the end, the rest 10 s.
+                $dur = (int)$it['duration'];
+                if ($it['media_id'] === null && $dur === 0 && $m['type'] !== 'video') {
+                    $dur = 10;
+                }
+                $item = ['media' => (int)$m['id'], 'duration' => $dur];
+                if ($it['size'] !== '' && $m['type'] === 'image') {
+                    $item['size'] = $it['size'];
+                }
+                // Fade out / Exit / Hold apply after the tag's last item, so the others still play.
+                if ($it['after'] !== 'repeat' && $i === count($list) - 1) {
+                    $item['after'] = $it['after'];
+                }
+                $items[] = $item;
+                $mediaIds[(int)$m['id']] = true;
             }
-            $items[] = $item;
-            $mediaIds[(int)$it['media_id']] = true;
         }
         $zones[] = [
             'id' => (int)$z['id'],

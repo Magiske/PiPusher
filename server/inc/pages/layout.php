@@ -106,6 +106,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         x('UPDATE layouts SET updated_at = ? WHERE id = ?', [now(), $id]);
         $pdo->commit();
         flash('Zones saved.');
+    } elseif ($do === 'item_add' && str_starts_with((string)($_POST['media_id'] ?? ''), 'tag:')) {
+        // A tag: plays every media item with the tag (that shows today).
+        $zone = zone_of_layout((int)$_POST['zone_id'], $id);
+        $tag = tag_clean(substr((string)$_POST['media_id'], 4));
+        foreach (array_keys(all_tags()) as $t) {
+            if (mb_strtolower($t) === mb_strtolower($tag)) {
+                $tag = $t; // the spelling used on the media
+            }
+        }
+        $size = item_size((string)($_POST['size'] ?? ''));
+        if ($zone && $tag !== '' && $size === null) {
+            flash('Picture size must be a percentage like 50% or pixels like 800x600, 800x or x600.', 'error');
+        } elseif ($zone && $tag !== '') {
+            $pos = (int)(q1('SELECT MAX(position) AS m FROM playlist_items WHERE zone_id = ?', [$zone['id']])['m'] ?? -1) + 1;
+            $dur = trim((string)($_POST['duration'] ?? ''));
+            x('INSERT INTO playlist_items (zone_id, media_id, tag, duration, size, after, position) VALUES (?, NULL, ?, ?, ?, ?, ?)',
+                [$zone['id'], $tag, $dur === '' ? 0 : max(0, (int)$dur), $size, item_after(), $pos]);
+            flash('Added all media tagged "' . $tag . '" to ' . $zone['name'] . '.');
+        }
     } elseif ($do === 'item_add') {
         $zone = zone_of_layout((int)$_POST['zone_id'], $id);
         $media = q1('SELECT * FROM media WHERE id = ?', [(int)($_POST['media_id'] ?? 0)]);
@@ -119,7 +138,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('Added "' . $media['name'] . '" to ' . $zone['name'] . '.');
         }
     } elseif ($do === 'item_save' && ($item = item_of_layout((int)$_POST['item_id'], $id))) {
-        $type = (string)q1('SELECT type FROM media WHERE id = ?', [$item['media_id']])['type'];
+        // A tag item: empty duration = automatic (stored as 0), like a video.
+        $type = $item['media_id'] === null ? 'video' : (string)q1('SELECT type FROM media WHERE id = ?', [$item['media_id']])['type'];
         $size = isset($_POST['size']) ? item_size((string)$_POST['size']) : $item['size'];
         if ($size === null) {
             flash('Picture size must be a percentage like 50% or pixels like 800x600, 800x or x600.', 'error');
@@ -158,6 +178,13 @@ foreach ($groups as $fid => $label) {
     $mediaOptions .= '<optgroup label="' . h($label) . '">';
     foreach ($byFolder[$fid] as $m) {
         $mediaOptions .= '<option value="' . $m['id'] . '">[' . h(strtoupper($m['type'])) . '] ' . h($m['name']) . '</option>';
+    }
+    $mediaOptions .= '</optgroup>';
+}
+if ($allTags = all_tags()) {
+    $mediaOptions .= '<optgroup label="🏷 Tags: every media item with the tag">';
+    foreach ($allTags as $t => $n) {
+        $mediaOptions .= '<option value="tag:' . h($t) . '">🏷 ' . h($t) . ' (' . $n . ' item' . ($n === 1 ? '' : 's') . ')</option>';
     }
     $mediaOptions .= '</optgroup>';
 }
@@ -236,7 +263,7 @@ page_header($layout['name'], 'layouts');
 </div>
 
 <?php foreach ($zones as $z):
-    $items = q('SELECT p.*, m.name AS media_name, m.type FROM playlist_items p JOIN media m ON m.id = p.media_id
+    $items = q('SELECT p.*, m.name AS media_name, m.type, m.starts_on, m.ends_on FROM playlist_items p LEFT JOIN media m ON m.id = p.media_id
                 WHERE p.zone_id = ? ORDER BY p.position, p.id', [$z['id']]); ?>
 <div class="card" id="zone-<?= $z['id'] ?>">
   <div class="page-head">
@@ -248,21 +275,27 @@ page_header($layout['name'], 'layouts');
   <table class="table">
     <thead><tr><th>#</th><th>Content</th><th>Duration (s)</th><th title="What the zone does when the duration runs out">After</th><th>Picture size</th><th></th></tr></thead>
     <tbody>
-    <?php foreach ($items as $i => $it): $video = $it['type'] === 'video'; $form = 'item-' . $it['id']; ?>
-      <tr>
+    <?php foreach ($items as $i => $it): $isTag = $it['media_id'] === null; $video = $it['type'] === 'video' || $isTag; $form = 'item-' . $it['id']; ?>
+      <tr<?= !$isTag && media_schedule($it) !== 'active' ? ' class="item-off"' : '' ?>>
         <td><?= $i + 1 ?></td>
-        <td><?= type_badge($it['type']) ?> <a href="<?= url(['p' => 'media_edit', 'id' => $it['media_id']]) ?>"><?= h($it['media_name']) ?></a></td>
+        <?php if ($isTag): $now = tag_media((string)$it['tag']); ?>
+        <td><?= tag_chip((string)$it['tag'], url(['p' => 'media', 'tag' => $it['tag']])) ?>
+          <span class="muted small"><?= $now ? count($now) . ' item' . (count($now) === 1 ? '' : 's') . ' now: '
+              . h(implode(', ', array_slice(array_column($now, 'name'), 0, 6))) . (count($now) > 6 ? ', …' : '') : 'no media with this tag shows today' ?></span></td>
+        <?php else: ?>
+        <td><?= type_badge($it['type']) ?> <a href="<?= url(['p' => 'media_edit', 'id' => $it['media_id']]) ?>"><?= h($it['media_name']) ?></a> <?= media_schedule_badge($it) ?></td>
+        <?php endif; ?>
         <td>
           <form method="post" class="inline" id="<?= $form ?>">
             <?= csrf_field() ?><input type="hidden" name="do" value="item_save"><input type="hidden" name="item_id" value="<?= $it['id'] ?>"><input type="hidden" name="zone_id" value="<?= $z['id'] ?>">
             <input type="number" name="duration" min="0" value="<?= $video && !(int)$it['duration'] ? '' : (int)$it['duration'] ?>"
               placeholder="<?= $video ? 'auto' : '10' ?>" class="num" data-autosubmit>
           </form>
-          <?php if ($video && !(int)$it['duration']): ?><span class="muted small">until video ends</span><?php endif; ?>
+          <?php if ($video && !(int)$it['duration']): ?><span class="muted small"><?= $isTag ? 'auto: videos to the end, the rest 10 s' : 'until video ends' ?></span><?php endif; ?>
         </td>
         <td><select name="after" form="<?= $form ?>" data-autosubmit><?= select_options(PP_AFTER, $it['after']) ?></select></td>
         <td>
-          <?php if ($it['type'] === 'image'): ?>
+          <?php if ($it['type'] === 'image' || $isTag): ?>
             <input name="size" form="<?= $form ?>" value="<?= h($it['size']) ?>" placeholder="fit zone" class="num" data-autosubmit>
           <?php endif; ?>
         </td>
@@ -288,6 +321,8 @@ page_header($layout['name'], 'layouts');
   <p class="muted small">Duration empty: videos play to the end, everything else 10 s. Picture size empty: the picture fits the zone
     (see Fit above). Or 50% of the picture's own size, 800x600 pixels, or one side like 800x or x600 (keeps the aspect ratio);
     the picture is centred in the zone.<br>
+    <b>🏷 Tags</b> (at the bottom of the <em>Add content</em> list) play every media item with that tag, by name, each for the duration given; media you
+    tag later joins by itself. Media outside its <em>Show from / until</em> dates is left out automatically.<br>
     After the duration: <b>Repeat</b> goes on to the next item (the zone loops), <b>Fade out</b> fades to the background and the zone
     stops, <b>Exit</b> does the same without fading, <b>Hold</b> keeps the item on screen (a video stops on its last frame) and the zone
     stops. A stopped zone starts again the next time its layout is shown.</p>

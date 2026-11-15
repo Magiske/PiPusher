@@ -153,7 +153,7 @@
     var update = function () {
       var n = Array.prototype.filter.call(boxes, function (b) { return b.checked; }).length;
       selForm.querySelector('[data-selected-count]').textContent = n + ' selected';
-      selForm.querySelector('[data-needs-selection]').disabled = n === 0;
+      selForm.querySelectorAll('[data-needs-selection]').forEach(function (b) { b.disabled = n === 0; });
       all.checked = n > 0 && n === boxes.length;
     };
     boxes.forEach(function (b) { b.addEventListener('change', update); });
