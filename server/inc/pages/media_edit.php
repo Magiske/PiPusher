@@ -32,6 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo clock_media_html($design, $font ? '../fonts/' . $font['file'] : null);
         exit;
     }
+    if ($do === 'render' && $m['type'] === 'color') {
+        header('Content-Type: text/html; charset=utf-8');
+        echo color_media_html(color_design($_POST));
+        exit;
+    }
     if ($do === 'save') {
         x('UPDATE media SET name = ?, folder_id = ?, updated_at = ? WHERE id = ?',
             [trim((string)$_POST['name']) ?: $m['name'], valid_folder_id($_POST['folder_id'] ?? null), now(), $id]);
@@ -57,6 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if ($m['type'] === 'clock') {
             save_clock_media($id, clock_design_from_post($_POST));
+        }
+        if ($m['type'] === 'color') {
+            save_color_media($id, color_design($_POST));
         }
         if ($m['type'] === 'url') {
             $u = trim((string)($_POST['url'] ?? ''));
@@ -101,7 +109,7 @@ page_header($m['name'], 'media');
   <a class="btn" href="<?= url(array_filter(['p' => 'media', 'folder' => $m['folder_id']])) ?>">← <?= $m['folder_id'] ? '📁 ' . h(media_folders()[(int)$m['folder_id']]['name'] ?? 'Media') : 'Media' ?></a>
 </div>
 
-<form method="post" class="<?= in_array($m['type'], ['html', 'text', 'ticker', 'clock'], true) ? 'editor-layout' : 'grid-2' ?>" id="media-form"<?= in_array($m['type'], ['text', 'ticker', 'clock'], true) ? ' data-text-editor' : '' ?>>
+<form method="post" class="<?= in_array($m['type'], ['html', 'text', 'ticker', 'clock', 'color'], true) ? 'editor-layout' : 'grid-2' ?>" id="media-form"<?= in_array($m['type'], ['text', 'ticker', 'clock', 'color'], true) ? ' data-text-editor' : '' ?>>
   <?= csrf_field() ?><input type="hidden" name="do" value="save">
   <div class="card stack">
     <label>Name <input name="name" value="<?= h($m['name']) ?>" required></label>
@@ -145,14 +153,15 @@ page_header($m['name'], 'media');
     <?php if ($m['type'] === 'text') require PP_ROOT . '/inc/pages/text_editor.php'; ?>
     <?php if ($m['type'] === 'ticker') require PP_ROOT . '/inc/pages/ticker_editor.php'; ?>
     <?php if ($m['type'] === 'clock') require PP_ROOT . '/inc/pages/clock_editor.php'; ?>
+    <?php if ($m['type'] === 'color') require PP_ROOT . '/inc/pages/color_editor.php'; ?>
     <div class="row"><button class="btn btn-primary">Save</button></div>
   </div>
   <div class="card">
     <h2>Preview</h2>
-    <?php if (in_array($m['type'], ['text', 'ticker', 'clock'], true)): ?>
+    <?php if (in_array($m['type'], ['text', 'ticker', 'clock', 'color'], true)): ?>
       <div class="row wrap">
         <label class="row">Shape <select id="text-shape"><?= ($m['type'] === 'ticker' && !$uses ? '<option value="12/1">Ticker strip 12:1</option>' : '') . text_shape_options($uses) ?></select></label>
-        <label class="row" title="Only for the preview: with no background, the item shows over whatever is under its zone">Behind the text <input type="color" id="text-backdrop" value="#334155"></label>
+        <label class="row" title="Only for the preview: with no background, the item shows over whatever is under its zone"><?= $m['type'] === 'color' ? 'Behind it' : 'Behind the text' ?> <input type="color" id="text-backdrop" value="#334155"></label>
       </div>
     <?php endif; ?>
     <div class="preview-box">
