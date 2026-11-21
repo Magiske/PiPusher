@@ -44,4 +44,11 @@ if [ -n "$DISPLAY" ]; then
     *) LOW=; [ "$MEM" -le 600000 ] && LOW=1 ;;
   esac
   [ -n "$LOW" ] && CHROMIUM_FLAGS="$CHROMIUM_FLAGS --enable-low-end-device-mode"
+
+  # Flags added by the distribution's /etc/chromium.d files (read before this one) that cost speed on a screen:
+  # --force-renderer-accessibility makes every page rebuild its accessibility tree on each change (there is no
+  # screen reader), --enable-remote-extensions allows extension installs and updates (the player uses none).
+  for FLAG in --force-renderer-accessibility --enable-remote-extensions; do
+    CHROMIUM_FLAGS=$(printf '%s' "$CHROMIUM_FLAGS" | sed "s/ *$FLAG//g")
+  done
 fi

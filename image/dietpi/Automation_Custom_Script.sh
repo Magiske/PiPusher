@@ -18,6 +18,26 @@ install -m 0755 "$SRC/$BIN" /usr/local/bin/pipusher
 install -m 0755 "$SRC/pipusher-bootconfig.sh" /usr/local/bin/pipusher-bootconfig
 install -D -m 0644 "$SRC/chromium-flags.sh" /etc/chromium.d/pipusher
 
+# Translation off with a managed policy: newer Chromium ignores --disable-features=Translate, and a translate
+# bar over a screen's web page cannot be closed without a keyboard.
+install -d /etc/chromium/policies/managed
+echo '{"TranslateEnabled": false}' > /etc/chromium/policies/managed/pipusher.json
+
+# Wi-Fi power saving off whenever a Wi-Fi interface comes up (DietPi uses ifupdown): with power saving the
+# Pi's Wi-Fi sleeps between packets, which slows streams and syncs and can drop the connection after a while.
+install -d /etc/network/if-up.d
+cat > /etc/network/if-up.d/pipusher-wifi-powersave <<'EOF'
+#!/bin/sh
+# PiPusher: no Wi-Fi power saving (slow or dropped connections on a screen).
+[ -d "/sys/class/net/$IFACE/wireless" ] || exit 0
+command -v iw > /dev/null && iw dev "$IFACE" set power_save off
+exit 0
+EOF
+chmod 0755 /etc/network/if-up.d/pipusher-wifi-powersave
+for d in /sys/class/net/*/wireless; do   # already up now (Wi-Fi set up on the first start)
+  [ -d "$d" ] && IFACE=$(basename "$(dirname "$d")") /etc/network/if-up.d/pipusher-wifi-powersave
+done
+
 # The agent and the kiosk run as the normal user "dietpi"; it may reboot for the remote Reboot command
 # and put a downloaded new version of itself in place for the remote Update client command.
 install -d -o dietpi -g dietpi /var/lib/pipusher

@@ -200,11 +200,13 @@ A ready-to-flash SD card image that does nothing but show PiPusher. It is built 
 - Dropbear, the smallest SSH server.
 - zram swap (compressed RAM, no SD card wear) and RAM logging.
 
-Bluetooth and the serial console are off. Chromium runs with low-memory flags; on boards with 1 GB of RAM or less it also uses low-end device mode.
+Bluetooth, the serial console and Wi-Fi power saving are off. Chromium runs with low-memory flags, without the accessibility and extension flags that Raspberry Pi's Chromium package adds, and with translation off (a managed policy). On boards with 1 GB of RAM or less it also runs fewer processes per site.
+
+There are three images: **RPi2** for every Raspberry Pi 2 (32-bit, so it also runs on the first Pi 2, v1.1, which has no 64-bit CPU, and leaves Chromium more of the 1 GB), **RPi234** for Pi 3, 4, 400 and Zero 2 W (64-bit), and **RPi5** for Pi 5.
 
 ```powershell
 .\build.ps1                          # first: the image takes the agent from dist\pipusher-client-<ver>.tar.gz
-.\build-image.ps1                    # generic images for Pi 2 v1.2/3/4/400/Zero 2 W (RPi234) and Pi 5 (RPi5)
+.\build-image.ps1                    # generic images for Pi 2 (RPi2), Pi 3/4/400/Zero 2 W (RPi234) and Pi 5 (RPi5)
 .\build-image.ps1 -Model RPi234 -Server https://example.com/pipusher/ -Key <key> -WifiSsid Office -WifiKey secret
                                      # personal image with the settings filled in (keep it private)
 ```

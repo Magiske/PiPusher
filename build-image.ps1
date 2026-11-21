@@ -2,7 +2,8 @@
   Builds ready-to-flash PiPusher images for Raspberry Pi, based on DietPi (minimal Debian).
 
     .\build-image.ps1                     # generic images for all models (run .\build.ps1 first)
-    .\build-image.ps1 -Model RPi234       # only Pi 2 v1.2 / 3 / 4 / 400 / Zero 2 W
+    .\build-image.ps1 -Model RPi2         # only Pi 2 (every version), 32-bit
+    .\build-image.ps1 -Model RPi234       # only Pi 3 / 4 / 400 / Zero 2 W (also Pi 2 v1.2), 64-bit
     .\build-image.ps1 -Server https://example.com/pipusher/ -Key KEY -WifiSsid Office -WifiKey secret -Password ...
                                           # personal image with the settings filled in (keep it private)
 
@@ -15,7 +16,7 @@
   The DietPi base images are downloaded once (checksum verified) into tools\dietpi\.
 #>
 param(
-    [ValidateSet('RPi234', 'RPi5', 'All')][string]$Model = 'All',
+    [ValidateSet('RPi2', 'RPi234', 'RPi5', 'All')][string]$Model = 'All',
     [string]$Server = '',
     [string]$Key = '',
     [string]$Name = '',
@@ -50,10 +51,9 @@ if (-not $Password) { $Password = 'pipusher' }
 if (Test-Path $work) { Remove-Item -Recurse -Force $work }
 New-Item -ItemType Directory -Force $work, $cache | Out-Null
 
-# The agent from the client package of this version.
-& $tar -xzf $clientTar -C $work "pipusher-client-$Version/pipusher-linux-arm64"
-if ($LASTEXITCODE) { throw 'could not extract the agent from the client package' }
-$agent = Join-Path $work "pipusher-client-$Version\pipusher-linux-arm64"
+# The agents from the client package of this version: 64-bit, and 32-bit for the Pi 2 image.
+& $tar -xzf $clientTar -C $work "pipusher-client-$Version/pipusher-linux-arm64" "pipusher-client-$Version/pipusher-linux-armv7"
+if ($LASTEXITCODE) { throw 'could not extract the agents from the client package' }
 
 # The boot partition editor (image\mkimage).
 Push-Location (Join-Path $root 'image\mkimage')
@@ -72,12 +72,17 @@ foreach ($f in 'Automation_Custom_PreScript.sh', 'Automation_Custom_Script.sh', 
     [IO.File]::WriteAllText((Join-Path $kitOut $f), $text, $utf8)
 }
 
-$models = if ($Model -eq 'All') { @('RPi234', 'RPi5') } else { @($Model) }
+$models = if ($Model -eq 'All') { @('RPi2', 'RPi234', 'RPi5') } else { @($Model) }
 foreach ($m in $models) {
     Write-Host "PiPusher $Version image for $m" -ForegroundColor Cyan
 
     # DietPi base image: downloaded once, re-downloaded when DietPi publishes a new one.
-    $base = "DietPi_$m-ARMv8-Trixie.img"
+    # Pi 2: DietPi's 32-bit (ARMv7) image. It also runs on the first Pi 2 (v1.1, which has no 64-bit CPU), and a
+    # 32-bit system leaves Chromium more of the 1 GB. Pi 3/4/5: 64-bit.
+    $arch = if ($m -eq 'RPi2') { 'ARMv7' } else { 'ARMv8' }
+    $bin = if ($m -eq 'RPi2') { 'pipusher-linux-armv7' } else { 'pipusher-linux-arm64' }
+    $agent = Join-Path $work "pipusher-client-$Version\$bin"
+    $base = "DietPi_$m-$arch-Trixie.img"
     $url = "https://dietpi.com/downloads/images/$base.xz"
     $want = ((Invoke-WebRequest "$url.sha256" -UseBasicParsing).Content -split '\s+')[0].ToLower()
     $xzFile = Join-Path $cache "$base.xz"
@@ -99,7 +104,7 @@ foreach ($m in $models) {
         "-put", "$kitOut\PIPUSHER-README.txt:/PIPUSHER-README.txt",
         "-put", "$kitOut\pipusher\pipusher-bootconfig.sh:/pipusher/pipusher-bootconfig.sh",
         "-put", "$kitOut\pipusher\chromium-flags.sh:/pipusher/chromium-flags.sh",
-        "-put", "${agent}:/pipusher/pipusher-linux-arm64"
+        "-put", "${agent}:/pipusher/$bin"
     )
     # DietPi first boot: fully automatic, only Chromium (+ X11, ALSA) on top of the base system.
     $dietpi = [ordered]@{
