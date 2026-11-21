@@ -320,3 +320,27 @@ tr.log-warning td { background: rgba(229,165,10,.06); }
   border-radius: 5px; padding: .1rem .3rem; }
 .cal-fb-note { font-size: .7rem; color: var(--muted); }
 .freq-fields[hidden] { display: none; }
+
+/* Screen alignment editor: the display (dark) with the picture (blue) inside, and a border field on each side. */
+.frame-editor { display: grid; grid-template-columns: auto minmax(0, 560px) auto; grid-template-areas: ". top ." "left dev right" ". bottom ." "act act act"; gap: .8rem 1rem; align-items: center; justify-items: center; justify-content: start; }
+.frame-top { grid-area: top; } .frame-bottom { grid-area: bottom; } .frame-left { grid-area: left; } .frame-right { grid-area: right; }
+.frame-border { display: flex; flex-direction: column; align-items: center; gap: .25rem; font-size: .85rem; color: var(--muted); }
+.frame-step { display: flex; align-items: center; gap: .25rem; color: var(--text); }
+.frame-step input.num { width: 4.6rem; text-align: center; }
+.frame-device { grid-area: dev; width: 100%; box-sizing: border-box; padding: 7%; background: #0b1220; border-radius: 16px; box-shadow: inset 0 0 0 2px #2a3446; overflow: hidden; }
+.frame-display { position: relative; width: 100%; background: #1a2232; box-shadow: 0 0 0 1px #64748b; background-image: linear-gradient(#26304299 1px, transparent 1px), linear-gradient(90deg, #26304299 1px, transparent 1px); background-size: 10% 10%; }
+.frame-pic { position: absolute; box-sizing: border-box; background: rgba(47, 111, 237, .38); border: 2px solid #60a5fa; cursor: move; touch-action: none; display: flex; align-items: center; justify-content: center; }
+.frame-pic-label { color: #fff; font-size: .85rem; text-align: center; line-height: 1.3; pointer-events: none; user-select: none; text-shadow: 0 1px 2px #0008; }
+.frame-pic-label small { opacity: .8; }
+.frame-handle { position: absolute; width: 12px; height: 12px; margin: -7px 0 0 -7px; background: #fff; border: 2px solid #2f6fed; border-radius: 3px; touch-action: none; }
+.frame-handle-n, .frame-handle-s { left: 50%; cursor: ns-resize; } .frame-handle-w, .frame-handle-e { top: 50%; cursor: ew-resize; }
+.frame-handle-n, .frame-handle-nw, .frame-handle-ne { top: 0; } .frame-handle-s, .frame-handle-sw, .frame-handle-se { top: 100%; }
+.frame-handle-w, .frame-handle-nw, .frame-handle-sw { left: 0; } .frame-handle-e, .frame-handle-ne, .frame-handle-se { left: 100%; }
+.frame-handle-nw, .frame-handle-se { cursor: nwse-resize; } .frame-handle-ne, .frame-handle-sw { cursor: nesw-resize; }
+.frame-actions { grid-area: act; justify-self: stretch; }
+@media (max-width: 640px) {
+  .frame-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "dev dev" "top bottom" "left right" "act act"; gap: .7rem .4rem; }
+  .frame-step { gap: .15rem; }
+  .frame-step .btn-sm { padding: .3rem .5rem; }
+  .frame-step input.num { width: 3.4rem; padding-left: .2rem; padding-right: .2rem; }
+}

@@ -25,11 +25,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('"' . PP_COMMANDS[$_POST['command']] . '" queued; it runs on the next sync.');
         }
     } elseif ($do === 'frame') {
-        $num = fn($k, $def, $min, $max) => ($v = trim((string)($_POST[$k] ?? ''))) === '' ? $def : max($min, min($max, round((float)str_replace(',', '.', $v), 2)));
-        $frame = ($_POST['reset'] ?? '') === '1' ? [0, 0, 100, 100]
-            : [$num('frame_x', 0, -100, 100), $num('frame_y', 0, -100, 100), $num('frame_w', 100, 10, 200), $num('frame_h', 100, 10, 200)];
-        x('UPDATE devices SET frame_x = ?, frame_y = ?, frame_w = ?, frame_h = ? WHERE id = ?', [...$frame, $id]);
-        flash('Screen alignment saved; the screen picks it up on its next sync.');
+        // The editor posts the four borders between the display's edges and the picture, in % of the display
+        // (negative = the picture reaches past that edge); stored as the picture's position and size.
+        $num = fn($k) => ($v = trim((string)($_POST[$k] ?? ''))) === '' || !is_numeric($v = str_replace(',', '.', $v)) ? 0.0
+            : max(-50.0, min(45.0, round((float)$v, 1)));
+        [$l, $t, $r, $b] = [$num('border_left'), $num('border_top'), $num('border_right'), $num('border_bottom')];
+        if (($_POST['reset'] ?? '') === '1') {
+            [$l, $t, $r, $b] = [0, 0, 0, 0];
+        }
+        if (100 - $l - $r < 10 || 100 - $t - $b < 10) {
+            flash('The picture would be less than 10 % of the display – alignment not changed.', 'error');
+        } else {
+            x('UPDATE devices SET frame_x = ?, frame_y = ?, frame_w = ?, frame_h = ? WHERE id = ?', [$l, $t, 100 - $l - $r, 100 - $t - $b, $id]);
+            log_info('Screen alignment saved', ['device' => log_device($device), 'borders' => "$l/$t/$r/$b"]);
+            flash('Screen alignment saved; the screen picks it up on its next sync.');
+        }
     } elseif ($do === 'reload_at') {
         $mode = (string)($_POST['reload_mode'] ?? '');
         $at = $mode === 'own' ? posted_time('reload_at', []) : (in_array($mode, ['', 'off'], true) ? $mode : null);
@@ -217,18 +227,43 @@ page_header($device['name'], 'devices');
 
   <div class="card">
     <h2>Screen alignment</h2>
-    <form method="post" class="row wrap align-end">
+    <?php
+    $fl = round((float)$device['frame_x'], 1);
+    $ft = round((float)$device['frame_y'], 1);
+    $borders = ['top' => $ft, 'left' => $fl, 'right' => round(100 - $fl - (float)$device['frame_w'], 1), 'bottom' => round(100 - $ft - (float)$device['frame_h'], 1)];
+    $same = count(array_unique(array_map('strval', $borders))) === 1;
+    $border = fn(string $side, string $label) => '<label class="frame-border frame-' . $side . '"><span>' . $label . '</span><span class="frame-step">'
+        . '<button type="button" class="btn btn-sm" data-step="-0.5" title="Smaller border">−</button>'
+        . '<input type="number" name="border_' . $side . '" value="' . $borders[$side] . '" step="0.5" min="-50" max="45" class="num">'
+        . '<button type="button" class="btn btn-sm" data-step="0.5" title="Bigger border">+</button> %</span></label>';
+    preg_match('/(\d+)\s*x\s*(\d+)/', (string)($info['screen'] ?? ''), $res);
+    ?>
+    <form method="post" class="frame-editor" data-frame-editor<?= $res ? ' data-res="' . (int)$res[1] . 'x' . (int)$res[2] . '"' : '' ?>>
       <?= csrf_field() ?><input type="hidden" name="do" value="frame">
-      <?php foreach (['frame_x' => 'X', 'frame_y' => 'Y', 'frame_w' => 'W', 'frame_h' => 'H'] as $k => $label): ?>
-        <label><?= $label ?> (%) <input type="number" name="<?= $k ?>" step="0.1" value="<?= h((string)(float)$device[$k]) ?>" class="num"></label>
-      <?php endforeach; ?>
-      <button class="btn">Save alignment</button>
-      <?php if (screen_frame($device)): ?><button class="btn" name="reset" value="1">Reset</button><?php endif; ?>
+      <?= $border('top', 'Top') ?>
+      <?= $border('left', 'Left') ?>
+      <div class="frame-device" title="The display">
+        <div class="frame-display" style="aspect-ratio:<?= $res ? (int)$res[1] . '/' . (int)$res[2] : '16/9' ?>">
+          <div class="frame-pic" data-frame-pic>
+            <span class="frame-pic-label">Picture<br><small data-frame-size></small></span>
+            <?php foreach (['n', 's', 'w', 'e', 'nw', 'ne', 'sw', 'se'] as $hd): ?><span class="frame-handle frame-handle-<?= $hd ?>" data-handle="<?= $hd ?>"></span><?php endforeach; ?>
+          </div>
+        </div>
+      </div>
+      <?= $border('right', 'Right') ?>
+      <?= $border('bottom', 'Bottom') ?>
+      <div class="frame-actions row wrap">
+        <label class="check"><input type="checkbox" data-frame-same<?= $same ? ' checked' : '' ?>> Same border all round (picture stays centred)</label>
+        <button type="button" class="btn btn-sm" data-frame-center>Centre</button>
+        <span class="grow"></span>
+        <button class="btn btn-primary">Save alignment</button>
+        <?php if (screen_frame($device)): ?><button class="btn" name="reset" value="1">Full screen</button><?php endif; ?>
+      </div>
     </form>
-    <p class="muted small">Moves and sizes the whole picture on this screen, in % of the display: X and Y move it (negative = left / up),
-      W and H size it (default 100, above 100 overscans). Use it to line up a display that crops or shifts the picture.
-      Layout zones are placed inside this area, so layouts need no changes. Currently
-      <strong><?= screen_frame($device) ? h("{$device['frame_w']}% × {$device['frame_h']}% at {$device['frame_x']}%, {$device['frame_y']}%") : 'full screen (default)' ?></strong>.</p>
+    <p class="muted small">The dark box is the display, the blue box is the picture PiPusher shows on it. Make the borders
+      bigger to pull the picture in from the display's edges, or drag the picture and its edges. A negative border lets
+      the picture reach past that edge, for a display that crops it. Layout zones are placed inside the picture, so
+      layouts need no changes.</p>
   </div>
 
   <div class="card">

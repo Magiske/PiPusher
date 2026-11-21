@@ -779,3 +779,105 @@
   });
   render();
 })();
+
+// Screen alignment: the picture drawn inside the display. Borders (in % of the display) are the form fields;
+// dragging the picture moves it, dragging its edges or corners resizes it, and "Same border all round" keeps it centred.
+(function () {
+  var form = document.querySelector('[data-frame-editor]');
+  if (!form) return;
+  var pic = form.querySelector('[data-frame-pic]'), display = pic.parentNode;
+  var sizeText = form.querySelector('[data-frame-size]'), same = form.querySelector('[data-frame-same]');
+  var input = {};
+  ['top', 'right', 'bottom', 'left'].forEach(function (s) { input[s] = form.querySelector('[name="border_' + s + '"]'); });
+  var res = (form.getAttribute('data-res') || '').split('x').map(Number);
+  var B = {};
+  var snap = function (v) { return Math.round(v * 2) / 2; };
+  var clamp = function (v) { return Math.max(-50, Math.min(45, v)); };
+  var num = function (el) { return parseFloat(String(el.value).replace(',', '.')); };
+  // At least 10 % of the display stays for the picture across and down.
+  var fits = function (b) { return 100 - b.left - b.right >= 10 && 100 - b.top - b.bottom >= 10; };
+  var render = function (typing) {
+    var w = 100 - B.left - B.right, h = 100 - B.top - B.bottom;
+    pic.style.left = B.left + '%';
+    pic.style.top = B.top + '%';
+    pic.style.width = w + '%';
+    pic.style.height = h + '%';
+    sizeText.textContent = res.length === 2 && res[0]
+      ? Math.round(res[0] * w / 100) + ' × ' + Math.round(res[1] * h / 100) + ' px'
+      : +w.toFixed(1) + ' % × ' + +h.toFixed(1) + ' %';
+    Object.keys(input).forEach(function (s) {
+      if (!(typing && document.activeElement === input[s])) input[s].value = +B[s].toFixed(1);
+    });
+  };
+  // Sets one border (all four with "same"), keeping at least 10 % for the picture.
+  var set = function (side, v) {
+    v = clamp(v);
+    var next = {}, k;
+    for (k in B) next[k] = same.checked ? v : B[k];
+    next[side] = v;
+    if (fits(next)) B = next;
+  };
+  Object.keys(input).forEach(function (s) {
+    B[s] = clamp(num(input[s]) || 0);
+    input[s].addEventListener('input', function () {
+      var v = num(input[s]);
+      if (!isNaN(v)) { set(s, v); render(true); }
+    });
+    input[s].addEventListener('change', function () { render(); });
+  });
+  form.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-step]');
+    if (!b) return;
+    var s = b.parentNode.querySelector('input').name.replace('border_', '');
+    set(s, snap(B[s] + parseFloat(b.getAttribute('data-step'))));
+    render();
+  });
+  same.addEventListener('change', function () {
+    if (!same.checked) return;
+    var avg = snap((B.top + B.right + B.bottom + B.left) / 4);
+    B = { top: avg, right: avg, bottom: avg, left: avg };
+    render();
+  });
+  form.querySelector('[data-frame-center]').addEventListener('click', function () {
+    var x = snap((B.left + B.right) / 2), y = snap((B.top + B.bottom) / 2);
+    B = { top: y, bottom: B.top + B.bottom - y, left: x, right: B.left + B.right - x };
+    render();
+  });
+
+  // Dragging: the picture moves; a handle moves the edges in its name (n, s, w, e).
+  var drag = null;
+  pic.addEventListener('pointerdown', function (e) {
+    drag = { handle: e.target.getAttribute('data-handle') || '', x: e.clientX, y: e.clientY,
+      start: { top: B.top, right: B.right, bottom: B.bottom, left: B.left } };
+    pic.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  pic.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dx = (e.clientX - drag.x) / display.clientWidth * 100, dy = (e.clientY - drag.y) / display.clientHeight * 100;
+    var s = drag.start, n = { top: s.top, right: s.right, bottom: s.bottom, left: s.left }, h = drag.handle;
+    if (!h) {
+      if (same.checked && (Math.abs(dx) >= .5 || Math.abs(dy) >= .5)) same.checked = false; // moved: no longer centred
+      dx = Math.max(-50 - s.left, s.right - 45, Math.min(45 - s.left, s.right + 50, dx));
+      dy = Math.max(-50 - s.top, s.bottom - 45, Math.min(45 - s.top, s.bottom + 50, dy));
+      n.left = snap(s.left + dx); n.right = s.left + s.right - n.left;
+      n.top = snap(s.top + dy); n.bottom = s.top + s.bottom - n.top;
+    } else {
+      if (h.indexOf('n') >= 0) n.top = snap(clamp(s.top + dy));
+      if (h.indexOf('s') >= 0) n.bottom = snap(clamp(s.bottom - dy));
+      if (h.indexOf('w') >= 0) n.left = snap(clamp(s.left + dx));
+      if (h.indexOf('e') >= 0) n.right = snap(clamp(s.right - dx));
+      if (same.checked) {
+        // All borders follow the edge being dragged (a corner: the direction that moved most).
+        var side = h.charAt(h.length === 2 && Math.abs(dx) > Math.abs(dy) ? 1 : 0);
+        var v = n[{ n: 'top', s: 'bottom', w: 'left', e: 'right' }[side]];
+        n = { top: v, right: v, bottom: v, left: v };
+      }
+    }
+    if (fits(n)) { B = n; render(); }
+  });
+  var end = function () { drag = null; };
+  pic.addEventListener('pointerup', end);
+  pic.addEventListener('pointercancel', end);
+  render();
+})();
