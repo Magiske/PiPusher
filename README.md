@@ -38,6 +38,8 @@ Remote commands from the admin panel: **reload player**, **sync now**, **reboot*
 
 **Screen alignment**: works like the layout's zone editor. The screen page shows the display as a dashed outline with some room around it, and the picture PiPusher shows on it as a box: drag the box to move the picture, its corner handle to resize it, or type X, Y, W and H (in % of the display; default 0, 0, 100, 100 = full screen). *Centre* and *Full screen* do what they say. Use it to line up a display that crops or shifts the picture. Layout zones are placed inside this area, so the same layout fits every screen.
 
+**Preview size**: under a screen's *Settings*, **Preview size** sets the size its **Preview** button shows the content at: the browser window (default), the resolution the screen reports, a listed size (1080p, 720p, 4K, portrait 1080p …) or any size typed in, such as `1080x720` or `1080p`. The player then runs at exactly that many pixels, scaled to fit the window, so the preview has the same shape, layout and text sizes as on the screen. Any preview link also takes `&size=1280x720` (or `&size=window`).
+
 **Sound**: each screen has a **Mute sound** button, and a group can mute or unmute all its screens. It applies on the screen's next sync, without reloading, and is remembered offline.
 - Muting covers videos and media in uploaded HTML content, including media the page adds later.
 - Web pages from other sites (URL media) keep their own sound.

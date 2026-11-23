@@ -345,6 +345,11 @@ function migrate(PDO $pdo): void
             // Zone opacity in % (100 = solid): the whole zone shows the background or the zones under it through it.
             'ALTER TABLE zones ADD COLUMN opacity INTEGER NOT NULL DEFAULT 100',
         ],
+        28 => [
+            // Size of the admin preview of a screen: '' = the browser window, 'screen' = the resolution the screen
+            // reports, or "WxH" in pixels (see preview_size()).
+            "ALTER TABLE devices ADD COLUMN preview_res TEXT NOT NULL DEFAULT ''",
+        ],
     ];
     foreach ($migrations as $v => $statements) {
         if ($v <= $version) {

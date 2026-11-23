@@ -859,3 +859,13 @@
   });
   render();
 })();
+
+// Screen settings: "Other size…" shows the field for a typed preview size.
+(function () {
+  var sel = document.querySelector('[data-preview-res]'), custom = document.querySelector('[data-preview-custom]');
+  if (!sel || !custom) return;
+  sel.addEventListener('change', function () {
+    custom.hidden = sel.value !== 'custom';
+    if (!custom.hidden) custom.focus();
+  });
+})();

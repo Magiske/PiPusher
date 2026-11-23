@@ -16,6 +16,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $useGroup = $group && ($_POST['source'] ?? 'group') === 'group' ? 1 : 0;
         x('UPDATE devices SET name = ?, layout_id = ?, playlist_id = ?, group_id = ?, use_group_content = ?, status = ? WHERE id = ?',
             [trim((string)$_POST['name']) ?: $device['name'], $layout, $playlist, $group, $useGroup, $status, $id]);
+        // Preview size: the browser window, the screen's own resolution, a listed size or one typed in ("1080x720").
+        $pv = (string)($_POST['preview_res'] ?? '');
+        if ($pv === 'custom') {
+            $pv = parse_resolution((string)($_POST['preview_custom'] ?? ''));
+            if ($pv === null) {
+                flash('The preview size must be like 1920x1080, 1080x720 or 1080p – preview size not changed.', 'error');
+            }
+        } elseif ($pv !== '' && $pv !== 'screen') {
+            $pv = parse_resolution($pv);
+        }
+        if ($pv !== null) {
+            x('UPDATE devices SET preview_res = ? WHERE id = ?', [$pv, $id]);
+        }
         log_info('Screen saved', ['device' => log_device($device), 'status' => $status, 'content' => $_POST['content'] ?? '', 'group' => $group]);
         flash('Screen saved. It picks up the change on its next sync.');
     } elseif ($do === 'command' && isset(PP_COMMANDS[$_POST['command'] ?? '']) && (!is_web_screen($device) || $_POST['command'] === 'reload')) {
@@ -77,7 +90,8 @@ page_header($device['name'], 'devices');
 <div class="page-head" data-device="<?= $id ?>" data-status="<?= h($device['status']) ?>">
   <h1><span class="dot <?= device_online($device) ? 'dot-on' : 'dot-off' ?>"></span> <?= h($device['name']) ?></h1>
   <?php [$effLayout, $effPlaylist, $effSource] = effective_content($device); if ($effLayout || $effPlaylist): ?>
-    <a class="btn" target="_blank" href="preview.php?device=<?= $id ?>">Preview</a>
+    <?php $pvSize = preview_size($device); ?>
+    <a class="btn" target="_blank" href="preview.php?device=<?= $id ?>">Preview<?= $pvSize ? ' <span class="muted small">' . $pvSize[0] . ' × ' . $pvSize[1] . '</span>' : '' ?> ↗</a>
   <?php endif; ?>
 </div>
 
@@ -134,6 +148,19 @@ page_header($device['name'], 'devices');
           $device['playlist_id'] ? (int)$device['playlist_id'] : null) ?></select>
         <span class="muted small">A playlist rotates layouts by its schedule; a single layout plays permanently.</span></label>
       <label>Status <select name="status"><?= select_options(['approved' => 'Approved', 'pending' => 'Pending (not allowed to play)'], $device['status']) ?></select></label>
+      <?php
+      $pvRes = (string)$device['preview_res'];
+      $reported = screen_resolution($device);
+      $pvChoices = ['' => 'Fill the browser window',
+          'screen' => 'Same as the screen' . ($reported ? ' (' . str_replace('x', ' × ', $reported) . ')' : ' (not reported yet)')]
+          + PP_PREVIEW_SIZES + ['custom' => 'Other size…'];
+      $pvSel = isset($pvChoices[$pvRes]) ? $pvRes : 'custom';
+      ?>
+      <label>Preview size
+        <select name="preview_res" data-preview-res><?= select_options($pvChoices, $pvSel) ?></select>
+        <input name="preview_custom" value="<?= $pvSel === 'custom' ? h($pvRes) : '' ?>" placeholder="e.g. 1080x720 or 1080p" data-preview-custom<?= $pvSel === 'custom' ? '' : ' hidden' ?>>
+        <span class="muted small">The Preview button shows this screen's content at this size, scaled to fit your
+          window, so it has the same shape and text sizes as on the screen.</span></label>
       <button class="btn btn-primary">Save</button>
     </form>
   </div>

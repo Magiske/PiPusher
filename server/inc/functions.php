@@ -258,6 +258,49 @@ function screen_reload_time(array $d): string
     return $own === 'off' ? '' : (is_hhmm($own) ? $own : daily_reload_time());
 }
 
+// Preview sizes offered for a screen (devices.preview_res); any other "WxH" can be typed in.
+const PP_PREVIEW_SIZES = [
+    '1920x1080' => '1920 × 1080 (1080p, Full HD)',
+    '1280x720' => '1280 × 720 (720p)',
+    '3840x2160' => '3840 × 2160 (4K)',
+    '1366x768' => '1366 × 768 (HD ready)',
+    '1080x1920' => '1080 × 1920 (portrait 1080p)',
+    '720x1280' => '720 × 1280 (portrait 720p)',
+    '1024x768' => '1024 × 768 (4:3)',
+];
+
+/**
+ * A resolution typed as "1920x1080", "1080 × 720", "1080p", "720p" or "4K", as "WxH"; null if it is none of these
+ * or outside 160..7680 pixels.
+ */
+function parse_resolution(string $v): ?string
+{
+    $v = strtolower(str_replace([' ', '×', '*'], ['', 'x', 'x'], trim($v)));
+    $named = ['4k' => '3840x2160', 'uhd' => '3840x2160', '2160p' => '3840x2160', '1440p' => '2560x1440', '1080p' => '1920x1080',
+        'fullhd' => '1920x1080', 'fhd' => '1920x1080', '720p' => '1280x720', 'hd' => '1280x720'];
+    $v = $named[$v] ?? $v;
+    if (!preg_match('/^(\d{3,4})x(\d{3,4})$/', $v, $m)) {
+        return null;
+    }
+    [$w, $h] = [(int)$m[1], (int)$m[2]];
+    return $w >= 160 && $h >= 160 && $w <= 7680 && $h <= 7680 ? "{$w}x{$h}" : null;
+}
+
+/** The resolution a screen reports (from its last sync), as "WxH", or null. */
+function screen_resolution(array $d): ?string
+{
+    $info = json_decode((string)($d['info'] ?? ''), true) ?: [];
+    return parse_resolution((string)($info['screen'] ?? ''));
+}
+
+/** The size a screen's preview is shown at, as [width, height] in pixels, or null for the browser window. */
+function preview_size(array $d): ?array
+{
+    $res = (string)($d['preview_res'] ?? '');
+    $res = $res === 'screen' ? screen_resolution($d) : parse_resolution($res);
+    return $res === null ? null : array_map('intval', explode('x', $res));
+}
+
 /** Screenshot interval in seconds (0 = only on demand). Stored in minutes. */
 function screenshot_interval(): int
 {
