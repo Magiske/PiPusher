@@ -23,23 +23,33 @@ final class Prefs {
     static final String BUILTIN = "builtin";
     static final String DEFAULT_BROWSER = "default";
 
+    /*
+     * BETA TESTING ONLY: the settings a new install starts with point at the beta server. Before the beta ends, set
+     * BETA_SERVER and BETA_KEY back to "", BETA_INSECURE to false and BETA_AUTOSTART to true.
+     * Saved settings always win: these are only the values shown until the settings are saved the first time.
+     */
+    static final String BETA_SERVER = "https://pipusher.com/pipusherbeta";
+    static final String BETA_KEY = "BFTB258HM4";
+    static final boolean BETA_INSECURE = true;
+    static final boolean BETA_AUTOSTART = false;
+
     final SharedPreferences sp;
 
     Prefs(Context c) {
         sp = c.getSharedPreferences("pipusher", Context.MODE_PRIVATE);
     }
 
-    String server() { return sp.getString("server", ""); }
+    String server() { return sp.getString("server", BETA_SERVER); }
     String name() { return sp.getString("name", ""); }
-    String key() { return sp.getString("key", ""); }
-    boolean insecure() { return sp.getBoolean("insecure", false); }
+    String key() { return sp.getString("key", BETA_KEY); }
+    boolean insecure() { return sp.getBoolean("insecure", BETA_INSECURE); }
     String browser() { return sp.getString("browser", BUILTIN); }
     boolean builtin() { return BUILTIN.equals(browser()); }
     String orientation() { return sp.getString("orientation", "landscape"); }
-    boolean autostart() { return sp.getBoolean("autostart", true); }
+    boolean autostart() { return sp.getBoolean("autostart", BETA_AUTOSTART); }
     boolean home() { return sp.getBoolean("home", false); }
     String pin() { return sp.getString("pin", ""); }
-    boolean configured() { return !server().isEmpty(); }
+    boolean configured() { return !sp.getString("server", "").isEmpty(); }
     /** The built-in player is on screen (not left for the settings or another app). */
     boolean showing() { return sp.getBoolean("showing", false); }
     void setShowing(boolean on) { sp.edit().putBoolean("showing", on).apply(); }

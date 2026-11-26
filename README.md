@@ -308,6 +308,10 @@ while the screen waits for approval. Later starts go straight to the player.
 - **Update client** is not available: install the new APK over the old one (settings and cache are kept). After an
   update the player comes back by itself only if it was on screen, so an update does not interrupt another app. The APK
   must be signed with the same key, `tools\android-release.jks`, which the first build created. Keep a copy of it.
+- **Beta builds (1.52.1 and later, for now):** a new install opens its settings with the beta server
+  (`https://pipusher.com/pipusherbeta`) and its registration key filled in, *Accept a self-signed server certificate*
+  ticked and *Start the player when the device starts* unticked, so a tester only presses Save. Saved settings are
+  never changed. The values are `BETA_*` in `android/src/com/pipusher/client/Prefs.java`; reset them when the beta ends.
 - **App ID:** `com.pipusher.client` (again since 1.52.0; 1.35.0 to 1.51.0 used `dk.magiske.pipusher`). Android sees
   the two IDs as different apps: on a device with 1.35.0 to 1.51.0, uninstall the old one
   (`adb uninstall dk.magiske.pipusher`), install the new APK and set it up again. A device still on a version before
