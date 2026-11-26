@@ -1,4 +1,4 @@
-package dk.magiske.pipusher;
+package com.pipusher.client;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class AgentService extends Service {
     static final String TAG = "PiPusher";
-    static final String ACTION_RESTART = "dk.magiske.pipusher.RESTART"; // settings changed: restart the agent
+    static final String ACTION_RESTART = "com.pipusher.client.RESTART"; // settings changed: restart the agent
     static final String EXTRA_LAUNCH = "launch";                        // also show the player (boot)
 
     private Process agent;

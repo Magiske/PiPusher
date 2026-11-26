@@ -1,4 +1,4 @@
-package dk.magiske.pipusher;
+package com.pipusher.client;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
