@@ -97,13 +97,32 @@ try {
         $env:GOOS = $t.GOOS; $env:GOARCH = $t.GOARCH; $env:GOARM = $t.GOARM
         Write-Host "Building the agent for $($t.Abi) ($($t.GOOS)/$($t.GOARCH))"
         New-Item -ItemType Directory -Force "$work\stage\lib\$($t.Abi)" | Out-Null
-        Invoke-Tool $go @('build', '-trimpath', '-tags', 'pipusher_android', '-ldflags', "-s -w -X main.version=$Version",
+        # -R 0x10000: segments on 64 KB boundaries, so the library also loads on 16 KB page devices (Google Play
+        # requires 16 KB alignment for 64-bit ABIs). Go's default is already 64 KB on ARM but only 4 KB on x86.
+        Invoke-Tool $go @('build', '-trimpath', '-tags', 'pipusher_android', '-ldflags', "-s -w -R 0x10000 -X main.version=$Version",
             '-o', "$work\stage\lib\$($t.Abi)\libpipusher.so", '.') "agent build for $($t.Abi)"
     }
 } finally {
     Pop-Location
     foreach ($k in $saved.Keys) { Set-Item "env:$k" $saved[$k] }
 }
+
+# Every LOAD segment must be aligned to at least 16 KB (Google Play's 16 KB page size check).
+foreach ($t in $abis) {
+    $so = "$work\stage\lib\$($t.Abi)\libpipusher.so"
+    $b = [IO.File]::ReadAllBytes($so)
+    $is64 = $b[4] -eq 2
+    $phoff = if ($is64) { [BitConverter]::ToUInt64($b, 0x20) } else { [BitConverter]::ToUInt32($b, 0x1C) }
+    $phentsize = [BitConverter]::ToUInt16($b, $(if ($is64) { 0x36 } else { 0x2A }))
+    $phnum = [BitConverter]::ToUInt16($b, $(if ($is64) { 0x38 } else { 0x2C }))
+    for ($i = 0; $i -lt $phnum; $i++) {
+        $o = [int]($phoff + $i * $phentsize)
+        if ([BitConverter]::ToUInt32($b, $o) -ne 1) { continue }   # PT_LOAD only
+        $align = if ($is64) { [BitConverter]::ToUInt64($b, $o + 0x30) } else { [BitConverter]::ToUInt32($b, $o + 0x1C) }
+        if ($align -lt 0x4000) { throw "$($t.Abi) libpipusher.so: segment alignment $align is below 16 KB" }
+    }
+}
+Write-Host 'Agent libraries are 16 KB aligned'
 
 # ---------------------------------------------------------------- the app
 $aapt2 = Join-Path $buildTools 'aapt2.exe'
